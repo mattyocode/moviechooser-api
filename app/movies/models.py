@@ -18,5 +18,5 @@ class Movie(models.Model):
     type_field = models.CharField(db_column='type_', max_length=12, null=True)
 
     def __str__(self):
-        return self.title
+        return f"{self.title}"
 
