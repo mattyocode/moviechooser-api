@@ -8,8 +8,10 @@ from .serializers import MovieSerializer
 
 
 class MovieList(APIView):
-    def get(self):
-        pass
+    def get(self, request, format=None):
+        movies = Movie.objects.all()
+        serializer = MovieSerializer(movies, many=True)
+        return Response(serializer.data)
 
 
 class MovieDetail(APIView):
