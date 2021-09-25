@@ -1,6 +1,6 @@
 import pytest
 
-from movies.models import Movie
+from movies.models import Genre, Movie
 
 @pytest.mark.django_db
 def test_movie_model():
@@ -31,3 +31,12 @@ def test_movie_model():
     assert movie.poster_url == "www.example.com/image/location/img.jpg"
     assert movie.type_field == "movie"
     assert str(movie) == movie.title
+
+
+@pytest.mark.django_db
+def test_genre_model():
+    genre = Genre(name='Comedy')
+    genre.save()
+
+    assert genre.name == "Comedy"
+    assert str(genre) == genre.name
