@@ -1,3 +1,4 @@
+import uuid
 from django.db import models
 
 class Genre(models.Model):
@@ -7,13 +8,12 @@ class Genre(models.Model):
         return self.name
 
 class Movie(models.Model):
-    
-    imdbid = models.CharField(max_length=20)
+    imdbid = models.CharField(unique=True, max_length=20)
     title = models.CharField(max_length=200)
     rated = models.CharField(max_length=20, blank=True, null=True)
     released = models.DateField()
     runtime = models.IntegerField(null=True)
-    # genre = models.ManyToManyField(Genre)
+    genre = models.ManyToManyField(Genre, related_name='movies', blank=True)
     # director = models.ManyToManyField(Director)
     writer = models.CharField(max_length=500)
     # actors = models.ManyToManyField(Actor)

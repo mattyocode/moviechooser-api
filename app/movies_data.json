@@ -1,0 +1,27 @@
+[
+  {
+    "model": "movies.genre",
+    "pk": 1,
+    "fields": {
+      "name": "Mystery"
+    }
+  },
+  {
+    "model": "movies.movie",
+    "pk": 1,
+    "fields": {
+      "imdbid": "tt0108550",
+      "title": "What's Eating Gilbert Grape",
+      "rated": "PG-13",
+      "released": "1994-03-04",
+      "runtime": 118,
+      "writer": "Peter Hedges (novel), Peter Hedges (screenplay)",
+      "plot": "A young man in a small Midwestern town struggles to care for his mentally-disabled younger brother and morbidly obese mother while attempting to pursue his own happiness.",
+      "language": "English",
+      "country": "USA",
+      "poster_url": "https://m.media-amazon.com/images/M/MV5BY2EyZDlhNjItODYzNi00Mzc3LWJjOWUtMTViODU5MTExZWMyL2ltYWdlXkEyXkFqcGdeQXVyMTQxNzMzNDI@._V1_SX300.jpg",
+      "type_field": "movie",
+      "genre": [1]
+    }
+  }
+]
