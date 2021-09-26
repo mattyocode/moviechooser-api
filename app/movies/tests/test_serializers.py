@@ -3,7 +3,7 @@ import datetime
 
 import pytest
 
-from movies.serializers import ActorSerializer, GenreSerializer, MovieSerializer
+from movies.serializers import ActorSerializer, DirectorSerializer, GenreSerializer, MovieSerializer
 
 def test_valid_movie_serializer():
     released_date = datetime.date(2021, 1, 14)
@@ -78,6 +78,29 @@ def test_valid_actor_serializer():
 def test_invalid_actor_serializer():
     invalid_serializer_data = {}
     serializer = ActorSerializer(data=invalid_serializer_data)
+    assert not serializer.is_valid()
+    assert serializer.validated_data == {}
+    assert serializer.data == invalid_serializer_data
+    assert serializer.errors == {
+        "name": ["This field is required."],
+        }
+
+
+@pytest.mark.django_db
+def test_valid_director_serializer():
+    valid_serializer_data = {
+        'name': 'Len Z',
+    }
+    serializer = DirectorSerializer(data=valid_serializer_data)
+    assert serializer.is_valid()
+    assert serializer.validated_data == valid_serializer_data
+    assert serializer.data == valid_serializer_data
+    assert serializer.errors == {}
+
+
+def test_invalid_director_serializer():
+    invalid_serializer_data = {}
+    serializer = DirectorSerializer(data=invalid_serializer_data)
     assert not serializer.is_valid()
     assert serializer.validated_data == {}
     assert serializer.data == invalid_serializer_data

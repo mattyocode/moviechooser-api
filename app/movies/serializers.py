@@ -1,12 +1,22 @@
 from django.db.models import fields
 from rest_framework import serializers
 
-from .models import Actor, Genre, Movie
+from .models import Actor, Director, Genre, Movie
 
 
 class ActorSerializer(serializers.ModelSerializer):
     class Meta:
         model = Actor
+        fields = ('name',)
+
+        read_only_fields = (
+            'id',
+        )
+
+
+class DirectorSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Director
         fields = ('name',)
 
         read_only_fields = (
