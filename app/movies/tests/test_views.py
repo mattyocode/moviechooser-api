@@ -2,7 +2,7 @@ import json
 
 import pytest
 
-from movies.models import Genre, Movie
+from movies.models import Actor, Genre, Movie
 
 
 @pytest.mark.django_db
@@ -57,6 +57,19 @@ def test_get_single_movie_with_genre(client, add_movie):
         )
     movie.genre.add(Genre.objects.create(name="Comedy"))
     resp = client.get(f"/api/movies/{movie.id}/")
-    print("resp >>", resp.data)
+    assert resp.status_code == 200
+    assert resp.data["title"] == "Tester"
+
+@pytest.mark.django_db
+def test_get_single_movie_with_actor(client, add_movie):
+    movie = add_movie(
+        imdbid='test1234',
+        title='Tester',
+        released="2021-01-14",
+        runtime="100",
+        poster_url="www.example.com/image/location/img.jpg",
+        )
+    movie.actors.add(Actor.objects.create(name="Clem Fandango"))
+    resp = client.get(f"/api/movies/{movie.id}/")
     assert resp.status_code == 200
     assert resp.data["title"] == "Tester"

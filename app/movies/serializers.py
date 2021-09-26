@@ -1,7 +1,18 @@
 from django.db.models import fields
 from rest_framework import serializers
 
-from .models import Genre, Movie
+from .models import Actor, Genre, Movie
+
+
+class ActorSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Actor
+        fields = ('name',)
+
+        read_only_fields = (
+            'id',
+        )
+
 
 class GenreSerializer(serializers.ModelSerializer):
     class Meta:
@@ -12,7 +23,10 @@ class GenreSerializer(serializers.ModelSerializer):
             'id',
         )
 
+
+
 class MovieSerializer(serializers.ModelSerializer):
+    actors = ActorSerializer(many=True, read_only=True)
     genre = GenreSerializer(many=True, read_only=True)
 
     class Meta:
@@ -26,6 +40,7 @@ class MovieSerializer(serializers.ModelSerializer):
             'plot',
             'country',
             'poster_url',
+            'actors',
             'genre')
         # released = serializers.DateField()
         read_only_fields = (

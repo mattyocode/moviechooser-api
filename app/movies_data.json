@@ -7,6 +7,20 @@
     }
   },
   {
+    "model": "movies.actor",
+    "pk": 1,
+    "fields": {
+      "name": "Joseph Melito"
+    }
+  },
+  {
+    "model": "movies.actor",
+    "pk": 2,
+    "fields": {
+      "name": "Bruce Willis"
+    }
+  },
+  {
     "model": "movies.movie",
     "pk": 1,
     "fields": {
@@ -21,7 +35,8 @@
       "country": "USA",
       "poster_url": "https://m.media-amazon.com/images/M/MV5BY2EyZDlhNjItODYzNi00Mzc3LWJjOWUtMTViODU5MTExZWMyL2ltYWdlXkEyXkFqcGdeQXVyMTQxNzMzNDI@._V1_SX300.jpg",
       "type_field": "movie",
-      "genre": [1]
+      "genre": [1],
+      "actors": [1, 2]
     }
   }
 ]

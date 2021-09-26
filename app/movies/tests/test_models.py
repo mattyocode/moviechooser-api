@@ -1,11 +1,12 @@
 import pytest
 
-from movies.models import Actor, Genre, Movie
+from movies.models import Actor, Director, Genre, Movie
+
 
 @pytest.mark.django_db
 def test_movie_model():
     movie = Movie(
-        imdbid='test1234',
+        imdbid="test1234",
         title='Tester: Revenge of the Test',
         rated="PG",
         released="2021-01-14",
@@ -34,18 +35,29 @@ def test_movie_model():
 
 
 @pytest.mark.django_db
+def test_actor_model():
+    actor = Actor(name="Clem Fandango")
+    actor.save()
+
+    assert actor.name == "Clem Fandango"
+    assert str(actor) == actor.name
+
+
+@pytest.mark.django_db
+def test_director_model():
+    director = Director(name="Len Z")
+    director.save()
+
+    assert director.name == "Len Z"
+    assert str(director) == director.name
+
+
+@pytest.mark.django_db
 def test_genre_model():
-    genre = Genre(name='Comedy')
+    genre = Genre(name="Comedy")
     genre.save()
 
     assert genre.name == "Comedy"
     assert str(genre) == genre.name
 
 
-@pytest.mark.django_db
-def test_actor_model():
-    actor = Actor(name='Clem Fandango')
-    actor.save()
-
-    assert actor.name == "Clem Fandango"
-    assert str(actor) == actor.name
