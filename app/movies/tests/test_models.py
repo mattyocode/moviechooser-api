@@ -1,6 +1,6 @@
 import pytest
 
-from movies.models import Genre, Movie
+from movies.models import Actor, Genre, Movie
 
 @pytest.mark.django_db
 def test_movie_model():
@@ -40,3 +40,12 @@ def test_genre_model():
 
     assert genre.name == "Comedy"
     assert str(genre) == genre.name
+
+
+@pytest.mark.django_db
+def test_actor_model():
+    actor = Actor(name='Clem Fandango')
+    actor.save()
+
+    assert actor.name == "Clem Fandango"
+    assert str(actor) == actor.name

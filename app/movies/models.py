@@ -7,6 +7,14 @@ class Genre(models.Model):
     def __str__(self):
         return self.name
 
+
+class Actor(models.Model):
+    name = models.CharField(unique=True, max_length=100)
+
+    def __str__(self):
+        return self.name
+
+
 class Movie(models.Model):
     imdbid = models.CharField(unique=True, max_length=20)
     title = models.CharField(max_length=200)
@@ -16,7 +24,7 @@ class Movie(models.Model):
     genre = models.ManyToManyField(Genre, related_name='movies', blank=True)
     # director = models.ManyToManyField(Director)
     writer = models.CharField(max_length=500)
-    # actors = models.ManyToManyField(Actor)
+    actors = models.ManyToManyField(Actor, related_name='movies', blank=True)
     plot = models.CharField(max_length=500, null=True)
     language = models.CharField(max_length=40, null=True)
     country = models.CharField(max_length=40, null=True)
