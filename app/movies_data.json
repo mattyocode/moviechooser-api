@@ -7,6 +7,13 @@
     }
   },
   {
+    "model": "movies.director",
+    "pk": 1,
+    "fields": {
+      "name": "Terry Gilliam"
+    }
+  },
+  {
     "model": "movies.actor",
     "pk": 1,
     "fields": {
@@ -22,9 +29,8 @@
   },
   {
     "model": "movies.movie",
-    "pk": 1,
+    "pk": "tt0108550",
     "fields": {
-      "imdbid": "tt0108550",
       "title": "What's Eating Gilbert Grape",
       "rated": "PG-13",
       "released": "1994-03-04",
@@ -36,7 +42,19 @@
       "poster_url": "https://m.media-amazon.com/images/M/MV5BY2EyZDlhNjItODYzNi00Mzc3LWJjOWUtMTViODU5MTExZWMyL2ltYWdlXkEyXkFqcGdeQXVyMTQxNzMzNDI@._V1_SX300.jpg",
       "type_field": "movie",
       "genre": [1],
-      "actors": [1, 2]
+      "actors": [1, 2],
+      "director": [1]
+    }
+  },
+  {
+    "model": "movies.ondemand",
+    "pk": 2238,
+    "fields": {
+      "movie": "tt0108550",
+      "service": "Google Play",
+      "url": "https://play.google.com/store/movies/details/Some_Like_It_Hot?gl=GB&hl=en&id=NeJ3r2iC5jU",
+      "added": "2021-08-25T12:41:51.864Z",
+      "updated": "2021-08-25T12:41:51.864Z"
     }
   }
 ]

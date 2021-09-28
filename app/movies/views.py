@@ -15,13 +15,13 @@ class MovieList(APIView):
 
 
 class MovieDetail(APIView):
-    def get_object(self, pk):
+    def get_object(self, slug):
         try:
-            return Movie.objects.get(pk=pk)
+            return Movie.objects.get(slug=slug)
         except Movie.DoesNotExist:
             raise Http404
 
-    def get(self, request, pk, format=None):
-        movie = self.get_object(pk)
+    def get(self, request, slug, format=None):
+        movie = self.get_object(slug)
         serializer = MovieSerializer(movie)
         return Response(serializer.data)

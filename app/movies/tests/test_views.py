@@ -2,7 +2,7 @@ import json
 
 import pytest
 
-from movies.models import Actor, Genre, Movie
+from movies.models import Actor, Director, Genre, Movie, OnDemand
 
 
 @pytest.mark.django_db
@@ -14,11 +14,12 @@ def test_get_single_movie(client, add_movie):
         runtime="100",
         poster_url="www.example.com/image/location/img.jpg",
         )
-    resp = client.get(f"/api/movies/{movie.id}/")
+    resp = client.get(f"/api/movies/{movie.slug}/")
     assert resp.status_code == 200
     assert resp.data["title"] == "Tester"
+    assert "-tester" in resp.data["slug"]
 
-
+@pytest.mark.django_db
 def test_get_single_movie_incorrect_id(client):
     resp = client.get("/api/movies/foo/")
     assert resp.status_code == 404
@@ -56,9 +57,11 @@ def test_get_single_movie_with_genre(client, add_movie):
         poster_url="www.example.com/image/location/img.jpg",
         )
     movie.genre.add(Genre.objects.create(name="Comedy"))
-    resp = client.get(f"/api/movies/{movie.id}/")
+    resp = client.get(f"/api/movies/{movie.slug}/")
     assert resp.status_code == 200
     assert resp.data["title"] == "Tester"
+    assert "Comedy" in resp.data["genre"][0].values()
+
 
 @pytest.mark.django_db
 def test_get_single_movie_with_actor(client, add_movie):
@@ -70,6 +73,44 @@ def test_get_single_movie_with_actor(client, add_movie):
         poster_url="www.example.com/image/location/img.jpg",
         )
     movie.actors.add(Actor.objects.create(name="Clem Fandango"))
-    resp = client.get(f"/api/movies/{movie.id}/")
+    resp = client.get(f"/api/movies/{movie.slug}/")
     assert resp.status_code == 200
     assert resp.data["title"] == "Tester"
+    assert "Clem Fandango" in resp.data["actors"][0].values()
+
+
+@pytest.mark.django_db
+def test_get_single_movie_with_director(client, add_movie):
+    movie = add_movie(
+        imdbid='test1234',
+        title='Tester',
+        released="2021-01-14",
+        runtime="100",
+        poster_url="www.example.com/image/location/img.jpg",
+        )
+    director = Director.objects.create(name="Len Z")
+    movie.director.add(director)
+    resp = client.get(f"/api/movies/{movie.slug}/")
+    assert resp.status_code == 200
+    assert resp.data["title"] == "Tester"
+    assert "Len Z" in resp.data["director"][0].values()
+
+
+@pytest.mark.django_db
+def test_get_single_movie_with_ondemand(client, add_movie):
+    movie = add_movie(
+        imdbid='test1234',
+        title='Tester',
+        released="2021-01-14",
+        runtime="100",
+        poster_url="www.example.com/image/location/img.jpg",
+        )
+    ondemand = OnDemand.objects.create(
+        movie=movie,
+        service="Google Play",
+        url="googleplay.com/"
+        )
+    resp = client.get(f"/api/movies/{movie.slug}/")
+    assert resp.status_code == 200
+    assert resp.data["title"] == "Tester"
+    assert "Google Play" in resp.data["ondemand"][0].values()

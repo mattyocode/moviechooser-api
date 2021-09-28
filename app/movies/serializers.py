@@ -1,7 +1,7 @@
 from django.db.models import fields
 from rest_framework import serializers
 
-from .models import Actor, Director, Genre, Movie
+from .models import Actor, Director, Genre, Movie, OnDemand, Review
 
 
 class ActorSerializer(serializers.ModelSerializer):
@@ -34,15 +34,28 @@ class GenreSerializer(serializers.ModelSerializer):
         )
 
 
+class OnDemandSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = OnDemand
+        fields = ['id', 'movie', 'service', 'url']
+
+
+class ReviewSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Review
+        fields = ['id', 'movie', 'source', 'score']
+
 
 class MovieSerializer(serializers.ModelSerializer):
     actors = ActorSerializer(many=True, read_only=True)
+    director = DirectorSerializer(many=True, read_only=True)
     genre = GenreSerializer(many=True, read_only=True)
+    ondemand = OnDemandSerializer(many=True, read_only=True)
 
     class Meta:
         model = Movie
         fields = (
-            'id',
+            'slug',
             'title', 
             'released',
             'runtime',
@@ -51,8 +64,10 @@ class MovieSerializer(serializers.ModelSerializer):
             'country',
             'poster_url',
             'actors',
-            'genre')
+            'director',
+            'genre',
+            'ondemand')
         # released = serializers.DateField()
         read_only_fields = (
-            'id',
+            '__all__',
         )
