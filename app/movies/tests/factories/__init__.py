@@ -30,13 +30,14 @@ class MovieFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = Movie
 
-    @factory.post_generation
-    def genre(self, create, extracted, **kwargs):
-        if not create:
-            return
-        if extracted:
-            for genre in extracted:
-                self.genre.add(genre)
+    # @factory.post_generation
+    # def genre(self, create, extracted, **kwargs):
+    #     if not create:
+    #         return
+    #     if extracted:
+    #         for genre in extracted:
+    #             print("moviefactory >> ", genre)
+    #             self.genre.add(genre)
 
 
 class MovieWithGenreFactory(MovieFactory):
@@ -47,6 +48,8 @@ class MovieWithGenreFactory(MovieFactory):
             return
         if extracted:
             for genre in extracted:
-                genre = GenreFactory(name=genre)
+                if Genre.objects.filter(name=genre):
+                    genre = Genre.objects.get(name=genre).id
+                else:
+                    genre = GenreFactory(name=genre)
                 self.genre.add(genre)
-

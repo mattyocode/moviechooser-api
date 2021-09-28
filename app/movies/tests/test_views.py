@@ -146,27 +146,17 @@ def test_get_single_movie_with_review(client, add_movie):
 
 @pytest.mark.django_db
 def test_get_queryset_filtered_by_genre(client):
-    # comedy = GenreFactory.create(name="comedy")
-    # movie1 = MovieFactory.create(
-    #     title="Funny Tests",
-    #     genre=[comedy]
-    # )
     movie1 = MovieWithGenreFactory.create(
         title="Funny Tests",
         genre=["comedy"]
     )
-    horror = GenreFactory.create(name="horror")
-    movie2 = MovieFactory.create(
+    movie2 = MovieWithGenreFactory.create(
         title="Scary Tests",
-        genre=[horror]
+        genre=["horror"]
     )
-    print("movie.genre >>>", movie1.__dict__)
-    print("movie1.genre >>>", movie1.genre.all())
-    qs = movie1.genre.all()
-    qs_names = [genre.name for genre in qs]
-    assert movie1.title == "Funny Tests"
-    assert ["comedy"] == qs_names
 
-    # resp = client.get(f"/api/movies?genre=1/")
-    # assert resp.status_code == 200
-    # assert resp.data["title"] == "Funny Tests"
+    comedy_id = movie1.genre.get(name="comedy").id
+
+    resp = client.get(f"/api/movies/?genre={comedy_id}/")
+    assert resp.status_code == 200
+    assert resp.data[0]["title"] == "Funny Tests"
