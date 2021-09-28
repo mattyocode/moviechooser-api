@@ -9,15 +9,19 @@ from .serializers import MovieSerializer
 
 
 class MovieList(ListAPIView):
-    def get_queryset(self, request, format=None):
-        genres = request.query_params.get('genre')
-        print("GENRES >>", genres)
-        movies = Movie.objects.filter(genre=genres)
-        serializer = MovieSerializer(movies, many=True)
-        return Response(serializer.data)
+    # def get_queryset(self, request, format=None):
+    #     genres = request.query_params.get('genre')
+    #     print("GENRES >>", genres)
+    #     movies = Movie.objects.filter(genre=genres)
+    #     serializer = MovieSerializer(movies, many=True)
+    #     return Response(serializer.data)
 
     def get(self, request, format=None):
         movies = Movie.objects.all()
+        genres = request.GET.get("genre")
+        print("GENRES in get >>", genres)
+        if genres:
+            movies = Movie.objects.filter(genre=genres)
         serializer = MovieSerializer(movies, many=True)
         return Response(serializer.data)
 

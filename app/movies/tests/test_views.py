@@ -157,6 +157,28 @@ def test_get_queryset_filtered_by_genre(client):
 
     comedy_id = movie1.genre.get(name="comedy").id
 
-    resp = client.get(f"/api/movies/?genre={comedy_id}/")
+    resp = client.get(f"/api/movies/?genre={comedy_id}")
     assert resp.status_code == 200
     assert resp.data[0]["title"] == "Funny Tests"
+    assert "Scary Tests" not in json.dumps(resp.data)
+
+
+@pytest.mark.django_db
+def test_get_queryset_filtered_by_2_genres(client):
+    movie1 = MovieWithGenreFactory.create(
+        title="Funny Tests",
+        genre=["comedy"]
+    )
+    movie2 = MovieWithGenreFactory.create(
+        title="Scary Tests",
+        genre=["horror"]
+    )
+
+    comedy_id = movie1.genre.get(name="comedy").id
+    horror_id = movie2.genre.get(name="horror").id
+
+    resp = client.get(f"/api/movies/?genre[]={comedy_id}&[]={horror_id}")
+    assert resp.status_code == 200
+    print(json.dumps(resp.data))
+    assert "Funny Tests" in json.dumps(resp.data)
+    assert "Scary Tests" in json.dumps(resp.data)
