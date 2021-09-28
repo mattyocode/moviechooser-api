@@ -2,7 +2,7 @@ import json
 
 import pytest
 
-from movies.models import Actor, Director, Genre, Movie, OnDemand
+from movies.models import Actor, Director, Genre, Movie, OnDemand, Review
 
 
 @pytest.mark.django_db
@@ -114,3 +114,29 @@ def test_get_single_movie_with_ondemand(client, add_movie):
     assert resp.status_code == 200
     assert resp.data["title"] == "Tester"
     assert "Google Play" in resp.data["ondemand"][0].values()
+
+
+@pytest.mark.django_db
+def test_get_single_movie_with_review(client, add_movie):
+    movie = add_movie(
+        imdbid='test1234',
+        title='Tester',
+        released="2021-01-14",
+        runtime="100",
+        poster_url="www.example.com/image/location/img.jpg",
+        )
+    review = Review.objects.create(
+        movie=movie,
+        source="imdb",
+        score=65
+        )
+    review2 = Review.objects.create(
+        movie=movie,
+        source="metacritic",
+        score=75
+        )
+    resp = client.get(f"/api/movies/{movie.slug}/")
+    assert resp.status_code == 200
+    assert resp.data["title"] == "Tester"
+    assert "imdb" in resp.data["review"][0].values()
+    assert "metacritic" in resp.data["review"][1].values()

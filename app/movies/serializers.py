@@ -37,13 +37,13 @@ class GenreSerializer(serializers.ModelSerializer):
 class OnDemandSerializer(serializers.ModelSerializer):
     class Meta:
         model = OnDemand
-        fields = ['id', 'movie', 'service', 'url']
+        fields = ['id', 'service', 'url']
 
 
 class ReviewSerializer(serializers.ModelSerializer):
     class Meta:
         model = Review
-        fields = ['id', 'movie', 'source', 'score']
+        fields = ['id', 'source', 'score']
 
 
 class MovieSerializer(serializers.ModelSerializer):
@@ -51,6 +51,7 @@ class MovieSerializer(serializers.ModelSerializer):
     director = DirectorSerializer(many=True, read_only=True)
     genre = GenreSerializer(many=True, read_only=True)
     ondemand = OnDemandSerializer(many=True, read_only=True)
+    review = ReviewSerializer(many=True, read_only=True)
 
     class Meta:
         model = Movie
@@ -66,7 +67,9 @@ class MovieSerializer(serializers.ModelSerializer):
             'actors',
             'director',
             'genre',
-            'ondemand')
+            'ondemand',
+            'review'
+            )
         # released = serializers.DateField()
         read_only_fields = (
             '__all__',

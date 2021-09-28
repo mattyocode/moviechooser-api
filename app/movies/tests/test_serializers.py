@@ -119,41 +119,20 @@ def test_invalid_director_serializer():
         }
 
 
-@pytest.mark.django_db
-def test_valid_ondemand_serializer(add_movie):
-    movie = add_movie(
-        imdbid='test1234',
-        title='Tester',
-        released="2021-01-14",
-        runtime="100",
-        poster_url="www.example.com/image/location/img.jpg",
-    )
+def test_valid_ondemand_serializer():
     valid_serializer_data = {
-        "movie": movie.imdbid,
         "service": "Google Play",
         "url": "googleplay.com/"
     }
     serializer = OnDemandSerializer(data=valid_serializer_data)
     assert serializer.is_valid()
     assert serializer.data == valid_serializer_data
-
-    valid_serializer_data["movie"] = movie
     assert serializer.validated_data == valid_serializer_data
     assert serializer.errors == {}
 
 
-@pytest.mark.django_db
-def test_invalid_ondemand_serializer(add_movie):
-    movie = add_movie(
-        imdbid='test1234',
-        title='Tester',
-        released="2021-01-14",
-        runtime="100",
-        poster_url="www.example.com/image/location/img.jpg",
-    )
-    invalid_serializer_data = {
-        'movie': movie.imdbid,
-    }
+def test_invalid_ondemand_serializer():
+    invalid_serializer_data = {}
     serializer = OnDemandSerializer(data=invalid_serializer_data)
     assert not serializer.is_valid()
     assert serializer.validated_data == {}
@@ -164,41 +143,20 @@ def test_invalid_ondemand_serializer(add_movie):
         }
 
 
-@pytest.mark.django_db
-def test_valid_review_serializer(add_movie):
-    movie = add_movie(
-        imdbid='test1234',
-        title='Tester',
-        released="2021-01-14",
-        runtime="100",
-        poster_url="www.example.com/image/location/img.jpg",
-    )
+def test_valid_review_serializer():
     valid_serializer_data = {
-        "movie": movie.imdbid,
         "source": "imdb",
         "score": 65
     }
     serializer = ReviewSerializer(data=valid_serializer_data)
     assert serializer.is_valid()
     assert serializer.data == valid_serializer_data
-
-    valid_serializer_data["movie"] = movie
     assert serializer.validated_data == valid_serializer_data
     assert serializer.errors == {}
 
 
-@pytest.mark.django_db
-def test_invalid_review_serializer(add_movie):
-    movie = add_movie(
-        imdbid='test1234',
-        title='Tester',
-        released="2021-01-14",
-        runtime="100",
-        poster_url="www.example.com/image/location/img.jpg",
-    )
-    invalid_serializer_data = {
-        'movie': movie.imdbid,
-    }
+def test_invalid_review_serializer():
+    invalid_serializer_data = {}
     serializer = ReviewSerializer(data=invalid_serializer_data)
     assert not serializer.is_valid()
     assert serializer.validated_data == {}

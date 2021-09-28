@@ -56,5 +56,14 @@
       "added": "2021-08-25T12:41:51.864Z",
       "updated": "2021-08-25T12:41:51.864Z"
     }
+  },
+  {
+    "model": "movies.review",
+    "pk": 1,
+    "fields": {
+      "movie": "tt0108550",
+      "source": "imdb",
+      "score": 80
+    }
   }
 ]
