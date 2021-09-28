@@ -1,6 +1,12 @@
 import pytest
+from pytest_factoryboy import register
 
+from .factories import GenreFactory, MovieFactory
 from movies.models import Movie
+
+
+register(GenreFactory)
+register(MovieFactory)
 
 
 @pytest.fixture(scope='function')

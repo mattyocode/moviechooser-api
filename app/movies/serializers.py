@@ -27,7 +27,7 @@ class DirectorSerializer(serializers.ModelSerializer):
 class GenreSerializer(serializers.ModelSerializer):
     class Meta:
         model = Genre
-        fields = ('name',)
+        fields = ('id', 'name')
 
         read_only_fields = (
             'id',

@@ -1,7 +1,9 @@
 import json
+import datetime
 
 import pytest
 
+from .factories import GenreFactory, MovieFactory, MovieWithGenreFactory
 from movies.models import Actor, Director, Genre, Movie, OnDemand, Review
 
 
@@ -140,3 +142,31 @@ def test_get_single_movie_with_review(client, add_movie):
     assert resp.data["title"] == "Tester"
     assert "imdb" in resp.data["review"][0].values()
     assert "metacritic" in resp.data["review"][1].values()
+
+
+@pytest.mark.django_db
+def test_get_queryset_filtered_by_genre(client):
+    # comedy = GenreFactory.create(name="comedy")
+    # movie1 = MovieFactory.create(
+    #     title="Funny Tests",
+    #     genre=[comedy]
+    # )
+    movie1 = MovieWithGenreFactory.create(
+        title="Funny Tests",
+        genre=["comedy"]
+    )
+    horror = GenreFactory.create(name="horror")
+    movie2 = MovieFactory.create(
+        title="Scary Tests",
+        genre=[horror]
+    )
+    print("movie.genre >>>", movie1.__dict__)
+    print("movie1.genre >>>", movie1.genre.all())
+    qs = movie1.genre.all()
+    qs_names = [genre.name for genre in qs]
+    assert movie1.title == "Funny Tests"
+    assert ["comedy"] == qs_names
+
+    # resp = client.get(f"/api/movies?genre=1/")
+    # assert resp.status_code == 200
+    # assert resp.data["title"] == "Funny Tests"
