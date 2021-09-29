@@ -157,7 +157,7 @@ def test_get_queryset_filtered_by_genre(client):
 
     comedy_id = movie1.genre.get(name="comedy").id
 
-    resp = client.get(f"/api/movies/?genre={comedy_id}")
+    resp = client.get(f"/api/movies/?g={comedy_id}")
     assert resp.status_code == 200
     assert resp.data[0]["title"] == "Funny Tests"
     assert "Scary Tests" not in json.dumps(resp.data)
@@ -177,8 +177,7 @@ def test_get_queryset_filtered_by_2_genres(client):
     comedy_id = movie1.genre.get(name="comedy").id
     horror_id = movie2.genre.get(name="horror").id
 
-    resp = client.get(f"/api/movies/?genre[]={comedy_id}&[]={horror_id}")
+    resp = client.get(f"/api/movies/?g={comedy_id}&g={horror_id}")
     assert resp.status_code == 200
-    print(json.dumps(resp.data))
     assert "Funny Tests" in json.dumps(resp.data)
     assert "Scary Tests" in json.dumps(resp.data)
