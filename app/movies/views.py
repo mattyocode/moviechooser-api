@@ -10,14 +10,28 @@ from .serializers import MovieSerializer
 
 class MovieList(ListAPIView):
     serializer_class = MovieSerializer
+
     def get_queryset(self):
         genres = self.request.GET.getlist('g')
-        print("genres >> ", genres)
+        start_decade = self.request.GET.get('dmin')
+        end_decade = self.request.GET.get('dmax')
+        runtime_from = self.request.GET.get('rmin')
+        runtime_to = self.request.GET.get('rmax')
+
         print(self.request)
+        print('values >> ', genres, start_decade, end_decade, runtime_from, runtime_to)
+
         if len(genres) > 0:
             movies = Movie.objects.filter(genre__id__in=genres)
         else:
             movies = Movie.objects.all()
+
+        if start_decade and end_decade:
+            movies = movies.filter(released__range=[f"{start_decade}-01-01", f"{end_decade}-12-31"])
+
+        if runtime_from and runtime_to:
+            movies = movies.filter(runtime__range=[f"{runtime_from}", f"{runtime_to}"])
+
         return movies
 
     # def get(self, request):

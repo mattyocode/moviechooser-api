@@ -62,7 +62,7 @@ def test_get_single_movie_with_genre(client, add_movie):
     resp = client.get(f"/api/movies/{movie.slug}/")
     assert resp.status_code == 200
     assert resp.data["title"] == "Tester"
-    assert "Comedy" in resp.data["genre"][0].values()
+    assert "Comedy" in json.dumps(resp.data)
 
 
 @pytest.mark.django_db
@@ -78,7 +78,7 @@ def test_get_single_movie_with_actor(client, add_movie):
     resp = client.get(f"/api/movies/{movie.slug}/")
     assert resp.status_code == 200
     assert resp.data["title"] == "Tester"
-    assert "Clem Fandango" in resp.data["actors"][0].values()
+    assert "Clem Fandango" in json.dumps(resp.data)
 
 
 @pytest.mark.django_db
@@ -95,7 +95,7 @@ def test_get_single_movie_with_director(client, add_movie):
     resp = client.get(f"/api/movies/{movie.slug}/")
     assert resp.status_code == 200
     assert resp.data["title"] == "Tester"
-    assert "Len Z" in resp.data["director"][0].values()
+    assert "Len Z" in json.dumps(resp.data)
 
 
 @pytest.mark.django_db
@@ -115,7 +115,7 @@ def test_get_single_movie_with_ondemand(client, add_movie):
     resp = client.get(f"/api/movies/{movie.slug}/")
     assert resp.status_code == 200
     assert resp.data["title"] == "Tester"
-    assert "Google Play" in resp.data["ondemand"][0].values()
+    assert "Google Play" in json.dumps(resp.data)
 
 
 @pytest.mark.django_db
@@ -140,8 +140,8 @@ def test_get_single_movie_with_review(client, add_movie):
     resp = client.get(f"/api/movies/{movie.slug}/")
     assert resp.status_code == 200
     assert resp.data["title"] == "Tester"
-    assert "imdb" in resp.data["review"][0].values()
-    assert "metacritic" in resp.data["review"][1].values()
+    assert "imdb" in resp.data["reviews"][0].values()
+    assert "metacritic" in resp.data["reviews"][1].values()
 
 
 @pytest.mark.django_db
@@ -173,6 +173,10 @@ def test_get_queryset_filtered_by_2_genres(client):
         title="Scary Tests",
         genre=["horror"]
     )
+    movie3 = MovieWithGenreFactory.create(
+        title="Tense Tests",
+        genre=["thriller"]
+    )
 
     comedy_id = movie1.genre.get(name="comedy").id
     horror_id = movie2.genre.get(name="horror").id
@@ -181,3 +185,131 @@ def test_get_queryset_filtered_by_2_genres(client):
     assert resp.status_code == 200
     assert "Funny Tests" in json.dumps(resp.data)
     assert "Scary Tests" in json.dumps(resp.data)
+    assert "Tense Tests" not in json.dumps(resp.data)
+
+
+@pytest.mark.django_db
+def test_get_queryset_filtered_by_release_single_decade(client):
+    movie1 = MovieWithGenreFactory.create(
+        title="Funny Tests",
+        genre=["comedy"],
+        released = datetime.date(1990, 1, 1)
+    )
+    movie2 = MovieWithGenreFactory.create(
+        title="Scary Tests",
+        genre=["horror"],
+        released = datetime.date(1989, 12, 31)
+    )
+
+    resp = client.get(f"/api/movies/?dmin=1990&dmax=1990")
+    assert resp.status_code == 200
+    assert "Funny Tests" in json.dumps(resp.data)
+    assert "Scary Tests" not in json.dumps(resp.data)
+
+
+@pytest.mark.django_db
+def test_get_queryset_filtered_by_release_decade_range(client):
+    movie1 = MovieWithGenreFactory.create(
+        title="Funny Tests",
+        genre=["comedy"],
+        released = datetime.date(1990, 1, 1)
+    )
+    movie2 = MovieWithGenreFactory.create(
+        title="Scary Tests",
+        genre=["horror"],
+        released = datetime.date(1985, 12, 31)
+    )
+    movie3 = MovieWithGenreFactory.create(
+        title="Tense Tests",
+        genre=["thriller"],
+        released = datetime.date(2000, 1, 1)
+    )
+
+    resp = client.get(f"/api/movies/?dmin=1980&dmax=1990")
+    assert resp.status_code == 200
+    assert "Funny Tests" in json.dumps(resp.data)
+    assert "Scary Tests" in json.dumps(resp.data)
+    assert "Tense Tests" not in json.dumps(resp.data)
+
+
+@pytest.mark.django_db
+def test_get_queryset_filtered_by_runtime(client):
+    movie1 = MovieWithGenreFactory.create(
+        title="Funny Tests",
+        genre=["comedy"],
+        runtime = 90
+    )
+    movie2 = MovieWithGenreFactory.create(
+        title="Scary Tests",
+        genre=["horror"],
+        runtime = 120
+    )
+
+    resp = client.get(f"/api/movies/?rmin=90&rmax=90")
+    assert resp.status_code == 200
+    assert "Funny Tests" in json.dumps(resp.data)
+    assert "Scary Tests" not in json.dumps(resp.data)
+
+
+@pytest.mark.django_db
+def test_get_queryset_filtered_by_runtime_range(client):
+    movie1 = MovieWithGenreFactory.create(
+        title="Funny Tests",
+        genre=["comedy"],
+        runtime = 90
+    )
+    movie2 = MovieWithGenreFactory.create(
+        title="Scary Tests",
+        genre=["horror"],
+        runtime = 120
+    )
+    movie3 = MovieWithGenreFactory.create(
+        title="Tense Tests",
+        genre=["thriller"],
+        runtime = 150
+    )
+
+    resp = client.get(f"/api/movies/?rmin=90&rmax=120")
+    assert resp.status_code == 200
+    assert "Funny Tests" in json.dumps(resp.data)
+    assert "Scary Tests" in json.dumps(resp.data)
+    assert "Tense Tests" not in json.dumps(resp.data)
+
+
+@pytest.mark.django_db
+def test_get_queryset_filtered_by_all_criteria(client):
+    movie1 = MovieWithGenreFactory.create(
+        title="Funny Tests",
+        genre=["comedy"],
+        released = datetime.date(1985, 1, 1),
+        runtime = 90
+    )
+    movie2 = MovieWithGenreFactory.create(
+        title="Scary Tests",
+        genre=["horror"],
+        released = datetime.date(2000, 1, 1),
+        runtime = 120
+    )
+    movie3 = MovieWithGenreFactory.create(
+        title="Tense Tests",
+        genre=["thriller"],
+        released = datetime.date(1990, 1, 1),
+        runtime = 150
+    )
+    movie4 = MovieWithGenreFactory.create(
+        title="Even Funnier Tests",
+        genre=["comedy"],
+        released = datetime.date(1990, 1, 1),
+        runtime = 155
+    )
+
+    comedy_id = movie1.genre.get(name="comedy").id
+    horror_id = movie2.genre.get(name="horror").id
+
+    resp = client.get(f"/api/movies/?g={comedy_id}&g={horror_id}&dmin=1980&dmax=1990&rmin=90&rmax=150")
+
+    assert resp.status_code == 200
+    assert "Funny Tests" in json.dumps(resp.data)
+    assert "Scary Tests" not in json.dumps(resp.data)
+    assert "Tense Tests" not in json.dumps(resp.data)
+    assert "Even Funnier Tests" not in json.dumps(resp.data)

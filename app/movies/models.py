@@ -1,4 +1,5 @@
 from django.db import models
+from django.db.models import Avg
 from django.db.models.signals import pre_save
 from django.dispatch import receiver
 
@@ -41,7 +42,12 @@ class Movie(models.Model):
     language = models.CharField(max_length=40, null=True)
     country = models.CharField(max_length=40, null=True)
     poster_url = models.CharField(max_length=200)
+    avg_rating = models.IntegerField(null=True)
     type_field = models.CharField(db_column='type_', max_length=12, null=True)
+
+    # @property
+    # def average_rating(self):
+    #     return self.reviews.aggregate(avg_score=Avg('score'))['avg_score']
 
     def __str__(self):
         return f"{self.title}"
@@ -70,7 +76,7 @@ class OnDemand(models.Model):
 class Review(models.Model):
     movie = models.ForeignKey(
         Movie, on_delete=models.CASCADE,
-        related_name='review'
+        related_name='reviews'
     )
     source = models.CharField(max_length=50)
     score = models.IntegerField(null=False)
