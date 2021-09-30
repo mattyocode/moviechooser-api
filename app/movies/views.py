@@ -12,8 +12,6 @@ from .serializers import MovieSerializer
 class MovieList(ListAPIView):
     serializer_class = MovieSerializer
 
-    print("MOVIE in queryset")
-
     def get_queryset(self):
         genres = self.request.GET.getlist('g')
         start_decade = self.request.GET.get('dmin')
