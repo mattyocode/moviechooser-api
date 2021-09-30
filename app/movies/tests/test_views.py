@@ -338,24 +338,41 @@ def test_get_single_movie_with_avg_review(client):
     assert resp.data["avg_rating"] == 70.0
 
 
-# @pytest.mark.django_db
-# def test_get_movies_with_avg_review(client):
-#     movie = MovieFactory(
-#         imdbid='test1234',
-#         )
-#     review = Review.objects.create(
-#         movie=movie,
-#         source="imdb",
-#         score=65
-#         )
-#     review2 = Review.objects.create(
-#         movie=movie,
-#         source="metacritic",
-#         score=75
-#         )
-#     resp = client.get(f"/api/movies/{movie.slug}/")
-#     assert resp.status_code == 200
-#     assert resp.data["title"] == movie.title
-#     assert "imdb" in json.dumps(resp.data)
-#     assert "metacritic" in json.dumps(resp.data)
-#     assert resp.data["avg_rating"] == 70.0
+@pytest.mark.django_db
+def test_get_movies_with_avg_review(client):
+    bad_movie = MovieFactory(
+        imdbid='test0987',
+        )
+    review = Review.objects.create(
+        movie=bad_movie,
+        source="imdb",
+        score=40
+        )
+    review2 = Review.objects.create(
+        movie=bad_movie,
+        source="metacritic",
+        score=30
+        )
+
+    good_movie = MovieFactory(
+        imdbid='test1234',
+        )
+    review = Review.objects.create(
+        movie=good_movie,
+        source="imdb",
+        score=90
+        )
+    review2 = Review.objects.create(
+        movie=good_movie,
+        source="metacritic",
+        score=86
+        )
+
+    resp = client.get(f"/api/movies/")
+
+    print(json.dumps(resp.data))
+    assert resp.status_code == 200
+    assert resp.data[0]["title"] == good_movie.title
+    assert resp.data[1]["title"] == bad_movie.title
+    assert resp.data[0]["avg_rating"] == 88.0
+    assert resp.data[1]["avg_rating"] == 35.0

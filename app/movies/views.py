@@ -37,8 +37,7 @@ class MovieList(ListAPIView):
         if runtime_from and runtime_to:
             movies = movies.filter(runtime__range=[f"{runtime_from}", f"{runtime_to}"])
 
-        print("gets here")
-        return movies
+        return movies.order_by('-avg_rating')
 
     # def get(self, request):
     #     movies = Movie.objects.all()
