@@ -1,4 +1,5 @@
 from django.http import Http404
+from django.db.models import Avg
 from rest_framework.views import APIView
 from rest_framework.generics import ListAPIView
 from rest_framework.response import Response
@@ -11,6 +12,8 @@ from .serializers import MovieSerializer
 class MovieList(ListAPIView):
     serializer_class = MovieSerializer
 
+    print("MOVIE in queryset")
+
     def get_queryset(self):
         genres = self.request.GET.getlist('g')
         start_decade = self.request.GET.get('dmin')
@@ -18,13 +21,15 @@ class MovieList(ListAPIView):
         runtime_from = self.request.GET.get('rmin')
         runtime_to = self.request.GET.get('rmax')
 
-        print(self.request)
-        print('values >> ', genres, start_decade, end_decade, runtime_from, runtime_to)
+        movies = Movie.objects.annotate(
+            avg_rating=Avg('reviews__score')
+        )
+
 
         if len(genres) > 0:
-            movies = Movie.objects.filter(genre__id__in=genres)
+            movies = movies.filter(genre__id__in=genres)
         else:
-            movies = Movie.objects.all()
+            movies = movies.all()
 
         if start_decade and end_decade:
             movies = movies.filter(released__range=[f"{start_decade}-01-01", f"{end_decade}-12-31"])
@@ -32,6 +37,7 @@ class MovieList(ListAPIView):
         if runtime_from and runtime_to:
             movies = movies.filter(runtime__range=[f"{runtime_from}", f"{runtime_to}"])
 
+        print("gets here")
         return movies
 
     # def get(self, request):
@@ -52,5 +58,6 @@ class MovieDetail(APIView):
 
     def get(self, request, slug, format=None):
         movie = self.get_object(slug)
+        movie.avg_rating = movie.reviews.aggregate(avg_score=Avg('score'))['avg_score']
         serializer = MovieSerializer(movie)
         return Response(serializer.data)

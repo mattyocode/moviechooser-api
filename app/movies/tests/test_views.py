@@ -313,3 +313,49 @@ def test_get_queryset_filtered_by_all_criteria(client):
     assert "Scary Tests" not in json.dumps(resp.data)
     assert "Tense Tests" not in json.dumps(resp.data)
     assert "Even Funnier Tests" not in json.dumps(resp.data)
+
+
+@pytest.mark.django_db
+def test_get_single_movie_with_avg_review(client):
+    movie = MovieFactory(
+        imdbid='test1234',
+        )
+    review = Review.objects.create(
+        movie=movie,
+        source="imdb",
+        score=65
+        )
+    review2 = Review.objects.create(
+        movie=movie,
+        source="metacritic",
+        score=75
+        )
+    resp = client.get(f"/api/movies/{movie.slug}/")
+    assert resp.status_code == 200
+    assert resp.data["title"] == movie.title
+    assert "imdb" in json.dumps(resp.data)
+    assert "metacritic" in json.dumps(resp.data)
+    assert resp.data["avg_rating"] == 70.0
+
+
+# @pytest.mark.django_db
+# def test_get_movies_with_avg_review(client):
+#     movie = MovieFactory(
+#         imdbid='test1234',
+#         )
+#     review = Review.objects.create(
+#         movie=movie,
+#         source="imdb",
+#         score=65
+#         )
+#     review2 = Review.objects.create(
+#         movie=movie,
+#         source="metacritic",
+#         score=75
+#         )
+#     resp = client.get(f"/api/movies/{movie.slug}/")
+#     assert resp.status_code == 200
+#     assert resp.data["title"] == movie.title
+#     assert "imdb" in json.dumps(resp.data)
+#     assert "metacritic" in json.dumps(resp.data)
+#     assert resp.data["avg_rating"] == 70.0

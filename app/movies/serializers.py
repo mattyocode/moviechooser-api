@@ -52,6 +52,7 @@ class MovieSerializer(serializers.ModelSerializer):
     genre = GenreSerializer(many=True, read_only=True)
     ondemand = OnDemandSerializer(many=True, read_only=True)
     reviews = ReviewSerializer(many=True, read_only=True)
+    avg_rating = serializers.FloatField(read_only=True)
 
     class Meta:
         model = Movie
@@ -68,7 +69,8 @@ class MovieSerializer(serializers.ModelSerializer):
             'director',
             'genre',
             'ondemand',
-            'reviews'
+            'reviews',
+            'avg_rating'
             )
         # released = serializers.DateField()
         read_only_fields = (

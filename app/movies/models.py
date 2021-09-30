@@ -42,7 +42,6 @@ class Movie(models.Model):
     language = models.CharField(max_length=40, null=True)
     country = models.CharField(max_length=40, null=True)
     poster_url = models.CharField(max_length=200)
-    avg_rating = models.IntegerField(null=True)
     type_field = models.CharField(db_column='type_', max_length=12, null=True)
 
     # @property
