@@ -3,3 +3,5 @@ env
 *.sqlite3
 *.pyc
 .env.dev
+.env.local
+fixtures/

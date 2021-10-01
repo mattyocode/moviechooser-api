@@ -7,7 +7,7 @@ from .models import Actor, Director, Genre, Movie, OnDemand, Review
 class ActorSerializer(serializers.ModelSerializer):
     class Meta:
         model = Actor
-        fields = ('name',)
+        fields = ('id', 'name',)
 
         read_only_fields = (
             'id',
@@ -17,7 +17,7 @@ class ActorSerializer(serializers.ModelSerializer):
 class DirectorSerializer(serializers.ModelSerializer):
     class Meta:
         model = Director
-        fields = ('name',)
+        fields = ('id', 'name',)
 
         read_only_fields = (
             'id',
