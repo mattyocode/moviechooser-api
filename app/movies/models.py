@@ -29,18 +29,18 @@ class Genre(models.Model):
 
 class Movie(models.Model):
     imdbid = models.CharField(primary_key=True, unique=True, max_length=20)
-    title = models.CharField(max_length=200)
+    title = models.CharField(max_length=500)
     slug = models.SlugField(max_length=32, null=True, blank=True, unique=True)
     rated = models.CharField(max_length=20, blank=True, null=True)
     released = models.DateField()
     runtime = models.IntegerField(null=True)
     genre = models.ManyToManyField(Genre, related_name='movie', blank=True)
     director = models.ManyToManyField(Director, related_name='movie', blank=True)
-    writer = models.CharField(max_length=500)
+    writer = models.CharField(max_length=1500)
     actors = models.ManyToManyField(Actor, related_name='movie', blank=True)
-    plot = models.CharField(max_length=500, null=True)
-    language = models.CharField(max_length=40, null=True)
-    country = models.CharField(max_length=40, null=True)
+    plot = models.CharField(max_length=1000, null=True)
+    language = models.CharField(max_length=500, null=True)
+    country = models.CharField(max_length=500, null=True)
     poster_url = models.CharField(max_length=200)
     type_field = models.CharField(db_column='type_', max_length=12, null=True)
 

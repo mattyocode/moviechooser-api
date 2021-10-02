@@ -4,6 +4,8 @@ services:
   movies:
     build: ./app
     command: python manage.py runserver 0.0.0.0:8000
+    environment:
+      - DJANGO_SETTINGS_MODULE=config.settings.dev
     volumes:
       - ./app/:/app/
     ports:
