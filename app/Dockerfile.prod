@@ -38,6 +38,8 @@ RUN chmod +x /app/entrypoint.sh
 COPY . .
 
 # collect static files
+RUN echo ${DJANGO_SETTINGS_MODULE}
+RUN echo ${SECRET_KEY}
 RUN python manage.py collectstatic --noinput
 
 # add and run as non-root user
