@@ -23,7 +23,6 @@ class MovieList(ListAPIView):
             avg_rating=Avg('reviews__score')
         )
 
-
         if len(genres) > 0:
             movies = movies.filter(genre__id__in=genres)
         else:
