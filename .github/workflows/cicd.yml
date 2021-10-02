@@ -72,7 +72,7 @@ jobs:
           cache-from: type=gha, scope=${{ github.workflow }}
           cache-to: type=gha, scope=${{ github.workflow }}
           build-args: |
-            SECRET_KEY=${{ secrets.DJANGO_SECRET_KEY }}
+            SECRET_KEY=${{ secrets.SECRET_KEY }}
       - name: Show image digest
         run: echo ${{ steps.docker_build.outputs.digest }}
 
