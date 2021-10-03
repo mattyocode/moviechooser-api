@@ -45,8 +45,8 @@ def test_get_all_movies(client, add_movie):
         )
     resp = client.get(f"/api/movies/")
     assert resp.status_code == 200
-    assert resp.data[0]["title"] == movie_one.title
-    assert resp.data[1]["title"] == movie_two.title
+    assert movie_one.title in json.dumps(resp.data)
+    assert movie_two.title in json.dumps(resp.data)
 
 
 @pytest.mark.django_db
@@ -159,7 +159,7 @@ def test_get_queryset_filtered_by_genre(client):
 
     resp = client.get(f"/api/movies/?g={comedy_id}")
     assert resp.status_code == 200
-    assert resp.data[0]["title"] == "Funny Tests"
+    assert "Funny Tests" in json.dumps(resp.data)
     assert "Scary Tests" not in json.dumps(resp.data)
 
 
@@ -370,9 +370,11 @@ def test_get_movies_with_avg_review(client):
 
     resp = client.get(f"/api/movies/")
 
-    print(json.dumps(resp.data))
+    
     assert resp.status_code == 200
-    assert resp.data[0]["title"] == good_movie.title
-    assert resp.data[1]["title"] == bad_movie.title
-    assert resp.data[0]["avg_rating"] == 88.0
-    assert resp.data[1]["avg_rating"] == 35.0
+    json_res = json.dumps(resp.data)
+    json_obj = json.loads(json_res)
+    assert json_obj["results"][0]["title"] == good_movie.title
+    assert json_obj["results"][1]["title"] == bad_movie.title
+    assert json_obj["results"][0]["avg_rating"] == 88.0
+    assert json_obj["results"][1]["avg_rating"] == 35.0

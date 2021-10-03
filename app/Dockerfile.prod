@@ -12,7 +12,7 @@ ENV PIP_DEFAULT_TIMEOUT=100
 ENV POETRY_VERSION 1.0.0
 ENV DEBUG 0
 ENV DJANGO_SETTINGS_MODULE config.settings.prod
-ARG SECRET_KEY $SECRET_KEY
+ARG SECRET_KEY=runtimetempsecretkey
 ENV DJANGO_ALLOWED_HOSTS localhost 127.0.0.1 [::1]
 
 # install postgres deps
@@ -31,16 +31,12 @@ COPY poetry.lock pyproject.toml /app/
 RUN poetry config virtualenvs.create false \
   && poetry install --no-interaction --no-ansi
 
-# copy entrypoint.sh
-COPY ./entrypoint.sh /app/entrypoint.sh
-RUN chmod +x /app/entrypoint.sh
 
 COPY . .
 
 # collect static files
-RUN echo ${DJANGO_SETTINGS_MODULE}
-RUN echo ${SECRET_KEY}
 RUN python manage.py collectstatic --noinput
+
 
 # add and run as non-root user
 RUN adduser --disabled-password myuser

@@ -1,13 +1,13 @@
-import string, random
-from django.db.models.signals import pre_save
-from django.dispatch import receiver
+import string
+import random
 from django.utils.text import slugify
 
-def random_string(length=8, chars = string.ascii_letters + string.digits):
+
+def random_string(length=8, chars=string.ascii_letters + string.digits):
     return ''.join(random.choice(chars) for n in range(length))
 
 
-def unique_slug(instance, new_slug = None):
+def unique_slug(instance, new_slug=None):
     if new_slug is not None:
         title_slug = new_slug
     else:

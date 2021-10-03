@@ -15,6 +15,17 @@ services:
     depends_on:
       - mc-dev-db
 
+  nginx:
+    build: ./nginx
+    ports:
+      - 80:80
+    depends_on:
+      - movies
+    environment:
+      - DJANGO_HOST=localhost
+      - DJANGO_PORT=8000
+      - _OUTPUT_DIR=/etc/nginx
+
   mc-dev-db:
     image: postgres:13-alpine
     volumes:
