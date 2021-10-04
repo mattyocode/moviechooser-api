@@ -131,8 +131,8 @@ jobs:
 
       - name: Add variables to .env
         run: |
-          echo SECRET_KEY=${{ env.DJANGO_SECRET_KEY }} >> .env
-          echo DJANGO_ALLOWED_HOSTS=secretkeyfortests >> .env
+          echo SECRET_KEY=secretkeyfortests >> .env
+          echo DJANGO_ALLOWED_HOSTS=${{ secrets.DJANGO_ALLOWED_HOSTS }} >> .env
           echo SQL_ENGINE=${{ secrets.SQL_ENGINE }} >> .env
           echo SQL_DATABASE=ci_db_test >> .env
           echo SQL_USER=postgres >> .env
