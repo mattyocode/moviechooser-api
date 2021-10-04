@@ -87,7 +87,6 @@ jobs:
           POSTGRES_PASSWORD: postgres
           POSTGRES_USER: postgres
           POSTGRES_DB: ci_db_test
-          DJANGO_SECRET_KEY: secretkeyfortests
         ports:
           - 5432:5432
         options: >-
@@ -104,20 +103,6 @@ jobs:
           GITHUB_CONTEXT: ${{ toJson(github) }}
         run: |
           echo "$GITHUB_CONTEXT"
-
-      - name: Add variables to .env
-        run: |
-          echo SECRET_KEY=${{ env.DJANGO_SECRET_KEY }} >> .env
-          echo DJANGO_ALLOWED_HOSTS=${{ secrets.DJANGO_ALLOWED_HOSTS }} >> .env
-          echo SQL_ENGINE=${{ secrets.SQL_ENGINE }} >> .env
-          echo SQL_DATABASE=ci_db_test >> .env
-          echo SQL_USER=postgres >> .env
-          echo SQL_PASSWORD=postgres >> .env
-          echo SQL_HOST=${{ secrets.SQL_HOST}} >> .env
-          echo SQL_PORT=5432 >> .env
-          echo DATABASE=postgres >> .env
-          echo DJANGO_PORT=8000 >> .env
-          echo DJANGO_SETTINGS_MODULE=config.settings.prod >> .env
 
       - name: Login to GHCR
         uses: docker/login-action@v1
@@ -143,6 +128,20 @@ jobs:
           docker pull ${{ env.WEB_IMAGE }}:${{ env.BRANCH_REF}}
           docker run -d -p 8000:8000 -e PORT=$PORT -e SECRET_KEY=$SECRET_KEY \
             --name latest_image ${{ env.WEB_IMAGE }}:"${{ env.BRANCH_REF}}"
+
+      - name: Add variables to .env
+        run: |
+          echo SECRET_KEY=${{ env.DJANGO_SECRET_KEY }} >> .env
+          echo DJANGO_ALLOWED_HOSTS=secretkeyfortests >> .env
+          echo SQL_ENGINE=${{ secrets.SQL_ENGINE }} >> .env
+          echo SQL_DATABASE=ci_db_test >> .env
+          echo SQL_USER=postgres >> .env
+          echo SQL_PASSWORD=postgres >> .env
+          echo SQL_HOST=${{ secrets.SQL_HOST}} >> .env
+          echo SQL_PORT=5432 >> .env
+          echo DATABASE=postgres >> .env
+          echo DJANGO_PORT=8000 >> .env
+          echo DJANGO_SETTINGS_MODULE=config.settings.prod >> .env
 
       - name: Run tests
         run: |
