@@ -7,14 +7,14 @@ from movies.models import Actor, Director, Genre, Movie, OnDemand, Review
 def test_movie_model():
     movie = Movie(
         imdbid="test1234",
-        title='Tester: Revenge of the Test',
+        title="Tester: Revenge of the Test",
         rated="PG",
         released="2021-01-14",
         runtime="100",
-        writer="Check Itt", 
-        plot="Once upon a time...", 
-        language="English", 
-        country="UK", 
+        writer="Check Itt",
+        plot="Once upon a time...",
+        language="English",
+        country="UK",
         poster_url="www.example.com/image/location/img.jpg",
         type_field="movie",
     )
@@ -66,7 +66,7 @@ def test_genre_model():
 def test_ondemand_model(add_movie):
     movie = Movie(
         imdbid="test1234",
-        title='Tester: Revenge of the Test',
+        title="Tester: Revenge of the Test",
         rated="PG",
         released="2021-01-14",
     )
@@ -90,7 +90,7 @@ def test_ondemand_model(add_movie):
 def test_review_model(add_movie):
     movie = Movie(
         imdbid="test1234",
-        title='Tester: Revenge of the Test',
+        title="Tester: Revenge of the Test",
         rated="PG",
         released="2021-01-14",
     )

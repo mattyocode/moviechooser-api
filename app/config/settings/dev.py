@@ -4,7 +4,7 @@ print("DEV SETTINGS RUN")
 
 DEBUG = 1
 
-SECRET_KEY = 'insecure_key_for_dev'
+SECRET_KEY = "insecure_key_for_dev"
 
 DATABASES = {
     "default": {

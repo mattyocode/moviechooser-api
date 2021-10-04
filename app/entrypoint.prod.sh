@@ -13,4 +13,5 @@ fi
 
 python manage.py migrate
 
+
 exec "$@"

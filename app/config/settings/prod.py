@@ -5,12 +5,10 @@ print("PROD SETTINGS RUN")
 DEBUG = 0
 
 REST_FRAMEWORK = {
-    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
-    'PAGE_SIZE': 30
+    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
+    "PAGE_SIZE": 30,
+    "DEFAULT_RENDERER_CLASSES": ("rest_framework.renderers.JSONRenderer",),
 }
-REST_FRAMEWORK["DEFAULT_RENDERER_CLASSES"] = (
-    "rest_framework.renderers.JSONRenderer",
-    )
 
 SECRET_KEY = os.environ.get("SECRET_KEY")
 

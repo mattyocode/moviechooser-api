@@ -20,8 +20,8 @@ class GenreFactory(factory.django.DjangoModelFactory):
 
 class MovieFactory(factory.django.DjangoModelFactory):
 
-    imdbid = factory.Sequence(lambda n: 'imdb%s' % n)
-    title = factory.Sequence(lambda n: 'Tester %s' % n)
+    imdbid = factory.Sequence(lambda n: "imdb%s" % n)
+    title = factory.Sequence(lambda n: "Tester %s" % n)
     released = fuzzy.FuzzyDate(datetime.date(1930, 1, 1))
     runtime = fuzzy.FuzzyInteger(50, 200)
     writer = fuzzy.FuzzyText(length=10, suffix="writer")
@@ -41,7 +41,6 @@ class MovieFactory(factory.django.DjangoModelFactory):
 
 
 class MovieWithGenreFactory(MovieFactory):
-
     @factory.post_generation
     def genre(self, create, extracted, **kwargs):
         if not create:
