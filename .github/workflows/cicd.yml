@@ -21,6 +21,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     env:
+      SECRET_KEY: foosecretkeyforbuildtimeonly
       DEBUG: 0
       DJANGO_ALLOWED_HOSTS: localhost 127.0.0.1
       SQL_ENGINE: ${{ secrets.SQL_ENGINE }}
@@ -88,7 +89,7 @@ jobs:
           cache-from: type=gha, scope=${{ github.workflow }}
           cache-to: type=gha, scope=${{ github.workflow }}
           build-args: |
-            SECRET_KEY=${{ secrets.DJANGO_SECRET_KEY }}
+            SECRET_KEY=${{ env.SECRET_KEY }}
 
       - name: Show image digest
         run: echo ${{ steps.docker_build.outputs.digest }}
