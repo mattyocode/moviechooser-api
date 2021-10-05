@@ -175,8 +175,9 @@ jobs:
 
       - name: Pull image and run container
         run: |
+          pwd
           docker pull ${{ env.WEB_IMAGE }}:${{ env.BRANCH_REF}}
-          docker run -d -p 8000:8000 -e PORT=$PORT --env-file=env_file \
+          docker run -d -p 8000:8000 -e PORT=$PORT --env-file=app/env_file \
             --name latest_image ${{ env.WEB_IMAGE }}:"${{ env.BRANCH_REF}}"
 
       - name: Run tests
