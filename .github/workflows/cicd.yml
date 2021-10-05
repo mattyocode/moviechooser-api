@@ -145,6 +145,7 @@ jobs:
 
       - name: Run tests
         run: |
+          export SECRET_KEY=secretkeyfortests
           docker exec -u root -e DEBUG=1 latest_image pytest -p no:warnings --cov=.
           docker exec -u root latest_image flake8
           docker exec -u root latest_image black --check --exclude=migrations .
