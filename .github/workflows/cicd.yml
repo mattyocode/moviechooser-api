@@ -165,7 +165,7 @@ jobs:
         env:
           DEBUG: 1
         run: |
-          docker exec -u root -e DEBUG="$env:DEBUG" latest_image pytest -vv -p no:cacheprovider -p no:warnings --cov=.
+          docker exec -u root latest_image pytest -vv -p no:cacheprovider -p no:warnings --cov=.
           docker exec -u root latest_image flake8
           docker exec -u root latest_image black --check --exclude=migrations .
           docker exec -u root latest_image isort . --check-only
@@ -173,4 +173,4 @@ jobs:
         env:
           DEBUG: 0
         run: |
-          docker exec -u root -e DEBUG="$env:DEBUG" latest_image python manage.py check --deploy --fail-level=WARNING
+          docker exec -u root latest_image python manage.py check --deploy --fail-level=WARNING
