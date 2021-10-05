@@ -109,7 +109,7 @@ jobs:
       SQL_DATABASE: ci_db_test
       SQL_USER: postgres
       SQL_PASSWORD: postgres
-      SQL_HOST: postgres
+      SQL_HOST: 127.0.0.1
       SQL_PORT: 5432
       DATABASE: postgres
       DJANGO_SETTINGS_MODULE: config.settings.prod
@@ -154,7 +154,7 @@ jobs:
           echo SQL_DATABASE=ci_db_test >> ./app/env_file
           echo SQL_USER=postgres >> ./app/env_file
           echo SQL_PASSWORD=postgres >> ./app/env_file
-          echo SQL_HOST=postgres >> ./app/env_file
+          echo SQL_HOST=127.0.0.1 >> ./app/env_file
           echo SQL_PORT=5432 >> ./app/env_file
           echo DATABASE=postgres >> ./app/env_file
           echo DJANGO_PORT=8000 >> ./app/env_file
