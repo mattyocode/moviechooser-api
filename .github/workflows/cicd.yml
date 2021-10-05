@@ -22,7 +22,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       DEBUG: 0
-      SECRET_KEY: tempkeyforbuild
+      SECRET_KEY: ${{ secrets.DJANGO_SECRET_KEY }}
       DJANGO_ALLOWED_HOSTS: localhost 127.0.0.1
       SQL_ENGINE: ${{ secrets.SQL_ENGINE }}
       SQL_DATABASE: ${{ secrets.SQL_DATABASE }}
@@ -42,9 +42,6 @@ jobs:
 
       - name: Add variables to .env
         run: |
-          echo $pwd
-          pwd
-          ls
           echo DEBUG=0 >> ./app/.env
           echo SECRET_KEY=testsecretkey >> ./app/.env
           echo DJANGO_ALLOWED_HOSTS=${{ secrets.DJANGO_ALLOWED_HOSTS }} >> ./app/.env
@@ -55,7 +52,6 @@ jobs:
           echo SQL_HOST=${{ secrets.SQL_HOST}} >> ./app/.env
           echo SQL_PORT=${{ secrets.SQL_PORT}} >> ./app/.env
           echo DATABASE=${{ secrets.DATABASE}} >> ./app/.env
-          ls
 
       - name: Set up Docker Buildx
         id: buildx
@@ -93,7 +89,7 @@ jobs:
           cache-from: type=gha, scope=${{ github.workflow }}
           cache-to: type=gha, scope=${{ github.workflow }}
           build-args: |
-            SECRET_KEY=${{ secrets.SECRET_KEY }}
+            SECRET_KEY=tempsecretkeyforbuild
 
       - name: Show image digest
         run: echo ${{ steps.docker_build.outputs.digest }}
@@ -159,7 +155,6 @@ jobs:
           ${{ env.BRANCH_REF}}
 
       - name: Pull image and run container
-        if: ${{ env.SECRET_KEY }}
         run: |
           docker pull ${{ env.WEB_IMAGE }}:${{ env.BRANCH_REF}}
           docker run -d -p 8000:8000 -e SECRET_KEY=${{ secrets.DJANGO_SECRET_KEY }}\
