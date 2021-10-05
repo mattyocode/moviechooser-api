@@ -32,7 +32,12 @@ jobs:
         run: |
           echo DEBUG=0 >> .env
           echo SECRET_KEY=testsecretkey >> .env
+          echo DJANGO_ALLOWED_HOSTS=${{ secrets.DJANGO_ALLOWED_HOSTS }} >> .env
           echo SQL_ENGINE=${{ secrets.SQL_ENGINE }} >> .env
+          echo SQL_DATABASE=${{ secrets.SQL_DATABASE }} >> .env
+          echo SQL_USER=${{ secrets.SQL_USER }} >> .env
+          echo SQL_PASSWORD=${{ secrets.SQL_PASSWORD}} >> .env
+          echo SQL_HOST=${{ secrets.SQL_HOST}} >> .env
           echo SQL_PORT=${{ secrets.SQL_PORT}} >> .env
           echo DATABASE=${{ secrets.DATABASE}} >> .env
 
@@ -139,6 +144,12 @@ jobs:
 
       - name: Pull image and run container
         run: |
+          docker pull ${{ env.WEB_IMAGE }}:${{ env.BRANCH_REF}}
+          docker run -d -p 8000:8000 -e PORT=$PORT -e SECRET_KEY=testrunkey \
+            --name latest_image ${{ env.WEB_IMAGE }}:"${{ env.BRANCH_REF}}"
+
+      - name: Run tests
+        run: |
           export SECRET_KEY=secretkeyfortests
           export DJANGO_ALLOWED_HOSTS=${{ secrets.DJANGO_ALLOWED_HOSTS }}
           export SQL_ENGINE=${{ secrets.SQL_ENGINE }}
@@ -150,12 +161,6 @@ jobs:
           export DATABASE=postgres
           export DJANGO_PORT=8000
           export DJANGO_SETTINGS_MODULE=config.settings.prod
-          docker pull ${{ env.WEB_IMAGE }}:${{ env.BRANCH_REF}}
-          docker run -d -p 8000:8000 -e PORT=$PORT -e SECRET_KEY=testrunkey \
-            --name latest_image ${{ env.WEB_IMAGE }}:"${{ env.BRANCH_REF}}"
-
-      - name: Run tests
-        run: |
           echo SECRET_KEY $SECRET_KEY
           echo SQL_ENGINE $SQL_ENGINE
           echo SQL_DATABASE $SQL_DATABASE
