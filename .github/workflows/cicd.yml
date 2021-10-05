@@ -45,7 +45,7 @@ jobs:
           echo $pwd
           pwd
           ls
-          echo DEBUG=0 >> .env
+          echo DEBUG=0 >> ./app/.env
           echo SECRET_KEY=testsecretkey >> ./app/.env
           echo DJANGO_ALLOWED_HOSTS=${{ secrets.DJANGO_ALLOWED_HOSTS }} >> ./app/.env
           echo SQL_ENGINE=${{ secrets.SQL_ENGINE }} >> ./app/.env
@@ -145,21 +145,21 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # - name: Add variables to .env
-      # run: |
-      #   ls
-      #   echo SECRET_KEY=secretkeyfortests >> ./app/.env
-      #   echo DJANGO_ALLOWED_HOSTS=${{ secrets.DJANGO_ALLOWED_HOSTS }} >> ./app/.env
-      #   echo SQL_ENGINE=${{ secrets.SQL_ENGINE }} >> ./app/.env
-      #   echo SQL_DATABASE=ci_db_test >> ./app/.env
-      #   echo SQL_USER=postgres >> ./app/.env
-      #   echo SQL_PASSWORD=postgres >> ./app/.env
-      #   echo SQL_HOST=postgres >> ./app/.env
-      #   echo SQL_PORT=5432 >> ./app/.env
-      #   echo DATABASE=postgres >> ./app/.env
-      #   echo DJANGO_PORT=8000 >> ./app/.env
-      #   echo DJANGO_SETTINGS_MODULE=config.settings.prod >> ./app/.env
-      #   ls
+      - name: Add variables to .env
+      run: |
+        ls
+        echo SECRET_KEY=secretkeyfortests >> ./app/env_file
+        echo DJANGO_ALLOWED_HOSTS=${{ secrets.DJANGO_ALLOWED_HOSTS }} >> ./app/env_file
+        echo SQL_ENGINE=${{ secrets.SQL_ENGINE }} >> ./app/env_file
+        echo SQL_DATABASE=ci_db_test >> ./app/env_file
+        echo SQL_USER=postgres >> ./app/env_file
+        echo SQL_PASSWORD=postgres >> ./app/env_file
+        echo SQL_HOST=postgres >> ./app/env_file
+        echo SQL_PORT=5432 >> ./app/env_file
+        echo DATABASE=postgres >> ./app/env_file
+        echo DJANGO_PORT=8000 >> ./app/env_file
+        echo DJANGO_SETTINGS_MODULE=config.settings.prod >> ./app/env_file
+        ls
 
       - name: Branch name if push
         if: github.event_name == 'push'
@@ -176,7 +176,7 @@ jobs:
       - name: Pull image and run container
         run: |
           docker pull ${{ env.WEB_IMAGE }}:${{ env.BRANCH_REF}}
-          docker run -d -p 8000:8000 -e PORT=$PORT -e SECRET_KEY=testrunkey \
+          docker run -d -p 8000:8000 -e PORT=$PORT --env-file=env_file \
             --name latest_image ${{ env.WEB_IMAGE }}:"${{ env.BRANCH_REF}}"
 
       - name: Run tests
