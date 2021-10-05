@@ -15,30 +15,14 @@ print("SSSSSS", SECRET_KEY)
 
 DATABASES = {
     "default": {
-        "ENGINE": os.environ.get("SQL_ENGINE"),
-        "NAME": os.environ.get("SQL_DATABASE"),
-        "USER": os.environ.get("SQL_USER"),
-        "PASSWORD": os.environ.get("SQL_PASSWORD"),
-        "HOST": os.environ.get("SQL_HOST"),
-        "PORT": os.environ.get("SQL_PORT"),
+        "ENGINE": os.environ.get("SQL_ENGINE", "django.db.backends.sqlite3"),
+        "NAME": os.environ.get("SQL_DATABASE", os.path.join(BASE_DIR, "db.sqlite3")),
+        "USER": os.environ.get("SQL_USER", "user"),
+        "PASSWORD": os.environ.get("SQL_PASSWORD", "password"),
+        "HOST": os.environ.get("SQL_HOST", "localhost"),
+        "PORT": os.environ.get("SQL_PORT", "5432"),
     }
 }
-
-## Test set up
-if 'test' in sys.argv or 'test\_coverage' in sys.argv:
-    DATABASES = {
-    "default": {
-        "ENGINE": 'django.db.backends.sqlite3',
-        "NAME": ':memory:',
-    }
-}
-
-print("ENGINE", os.environ.get("SQL_ENGINE"))
-print("NAME", os.environ.get("SQL_DATABASE"))
-print("USER", os.environ.get("SQL_USER"))
-print("PASSWORD", os.environ.get("SQL_PASSWORD"))
-print("HOST", os.environ.get("SQL_HOST"))
-print("PORT", os.environ.get("SQL_PORT"))
 
 # CORS_ALLOWED_ORIGINS = os.environ.get("CORS_ALLOWED_ORIGINS").split(" ")
 
