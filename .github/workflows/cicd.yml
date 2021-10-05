@@ -145,9 +145,11 @@ jobs:
 
       - name: Run tests
         run: |
-          docker exec -u root export SECRET_KEY=secretkeyfortests
           docker exec -u root -e DEBUG=1 latest_image pytest -p no:warnings --cov=.
           docker exec -u root latest_image flake8
           docker exec -u root latest_image black --check --exclude=migrations .
           docker exec -u root latest_image isort . --check-only
           docker exec -u root -e DEBUG=0 latest_image python manage.py check --deploy --fail-level=WARNING
+        with:
+          env:
+            - SECRET_KEY: asdfadfasdf
