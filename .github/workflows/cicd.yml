@@ -101,18 +101,18 @@ jobs:
   test:
     runs-on: ubuntu-latest
     needs: build
-    env:
-      DEBUG: 0
-      SECRET_KEY: tempkeyforbuild
-      DJANGO_ALLOWED_HOSTS: localhost 127.0.0.1
-      SQL_ENGINE: ${{ secrets.SQL_ENGINE }}
-      SQL_DATABASE: ci_db_test
-      SQL_USER: postgres
-      SQL_PASSWORD: postgres
-      SQL_HOST: localhost
-      SQL_PORT: 5432
-      DATABASE: postgres
-      DJANGO_SETTINGS_MODULE: config.settings.prod
+    # env:
+    #   DEBUG: 0
+    #   SECRET_KEY: tempkeyforbuild
+    #   DJANGO_ALLOWED_HOSTS: localhost 127.0.0.1
+    #   SQL_ENGINE: ${{ secrets.SQL_ENGINE }}
+    #   SQL_DATABASE: ci_db_test
+    #   SQL_USER: postgres
+    #   SQL_PASSWORD: postgres
+    #   SQL_HOST: localhost
+    #   SQL_PORT: 5432
+    #   DATABASE: postgres
+    #   DJANGO_SETTINGS_MODULE: config.settings.prod
 
     services:
       postgres:
@@ -128,6 +128,7 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+
     steps:
       - name: Checkout repo
         uses: actions/checkout@v2
@@ -148,7 +149,7 @@ jobs:
       - name: Add variables to .env
         run: |
           echo SECRET_KEY=secretkeyfortests >> ./app/env_file
-          echo DJANGO_ALLOWED_HOSTS=${{ secrets.DJANGO_ALLOWED_HOSTS }} >> ./app/env_file
+          echo DJANGO_ALLOWED_HOSTS=localhost 127.0.0.1 [::1] >> ./app/env_file
           echo SQL_ENGINE=${{ secrets.SQL_ENGINE }} >> ./app/env_file
           echo SQL_DATABASE=ci_db_test >> ./app/env_file
           echo SQL_USER=postgres >> ./app/env_file
