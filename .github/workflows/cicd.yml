@@ -145,21 +145,21 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Add variables to .env
-        run: |
-          ls
-          echo SECRET_KEY=secretkeyfortests >> ./app/.env
-          echo DJANGO_ALLOWED_HOSTS=${{ secrets.DJANGO_ALLOWED_HOSTS }} >> ./app/.env
-          echo SQL_ENGINE=${{ secrets.SQL_ENGINE }} >> ./app/.env
-          echo SQL_DATABASE=ci_db_test >> ./app/.env
-          echo SQL_USER=postgres >> ./app/.env
-          echo SQL_PASSWORD=postgres >> ./app/.env
-          echo SQL_HOST=postgres >> ./app/.env
-          echo SQL_PORT=5432 >> ./app/.env
-          echo DATABASE=postgres >> ./app/.env
-          echo DJANGO_PORT=8000 >> ./app/.env
-          echo DJANGO_SETTINGS_MODULE=config.settings.prod >> ./app/.env
-          ls
+      # - name: Add variables to .env
+      # run: |
+      #   ls
+      #   echo SECRET_KEY=secretkeyfortests >> ./app/.env
+      #   echo DJANGO_ALLOWED_HOSTS=${{ secrets.DJANGO_ALLOWED_HOSTS }} >> ./app/.env
+      #   echo SQL_ENGINE=${{ secrets.SQL_ENGINE }} >> ./app/.env
+      #   echo SQL_DATABASE=ci_db_test >> ./app/.env
+      #   echo SQL_USER=postgres >> ./app/.env
+      #   echo SQL_PASSWORD=postgres >> ./app/.env
+      #   echo SQL_HOST=postgres >> ./app/.env
+      #   echo SQL_PORT=5432 >> ./app/.env
+      #   echo DATABASE=postgres >> ./app/.env
+      #   echo DJANGO_PORT=8000 >> ./app/.env
+      #   echo DJANGO_SETTINGS_MODULE=config.settings.prod >> ./app/.env
+      #   ls
 
       - name: Branch name if push
         if: github.event_name == 'push'
