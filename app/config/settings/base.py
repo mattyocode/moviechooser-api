@@ -135,11 +135,3 @@ REST_FRAMEWORK = {
     "PAGE_SIZE": 30,
 }
 
-## Test set up
-if 'test' in sys.argv or 'test\_coverage' in sys.argv:
-    DATABASES = {
-    "default": {
-        "ENGINE": 'django.db.backends.sqlite3',
-        "NAME": ':memory:',
-    }
-}

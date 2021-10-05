@@ -24,6 +24,15 @@ DATABASES = {
     }
 }
 
+## Test set up
+if 'test' in sys.argv or 'test\_coverage' in sys.argv:
+    DATABASES = {
+    "default": {
+        "ENGINE": 'django.db.backends.sqlite3',
+        "NAME": ':memory:',
+    }
+}
+
 print("ENGINE", os.environ.get("SQL_ENGINE"))
 print("NAME", os.environ.get("SQL_DATABASE"))
 print("USER", os.environ.get("SQL_USER"))
@@ -32,3 +41,5 @@ print("HOST", os.environ.get("SQL_HOST"))
 print("PORT", os.environ.get("SQL_PORT"))
 
 # CORS_ALLOWED_ORIGINS = os.environ.get("CORS_ALLOWED_ORIGINS").split(" ")
+
+
