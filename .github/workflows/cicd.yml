@@ -31,7 +31,7 @@ jobs:
       - name: Add variables to .env
         run: |
           echo DEBUG=0 >> .env
-          echo SECRET_KEY=${{ secrets.DJANGO_SECRET_KEY }} >> .env
+          echo SECRET_KEY=testsecretkey >> .env
           echo SQL_ENGINE=${{ secrets.SQL_ENGINE }} >> .env
           echo SQL_PORT=${{ secrets.SQL_PORT}} >> .env
           echo DATABASE=${{ secrets.DATABASE}} >> .env
@@ -150,5 +150,3 @@ jobs:
           docker exec -u root latest_image black --check --exclude=migrations .
           docker exec -u root latest_image isort . --check-only
           docker exec -u root -e DEBUG=0 latest_image python manage.py check --deploy --fail-level=WARNING
-        env:
-          - SECRET_KEY: asdfadfasdf
