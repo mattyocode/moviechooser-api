@@ -111,6 +111,20 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Add variables to .env
+        run: |
+          echo SECRET_KEY=secretkeyfortests >> .env
+          echo DJANGO_ALLOWED_HOSTS=${{ secrets.DJANGO_ALLOWED_HOSTS }} >> .env
+          echo SQL_ENGINE=${{ secrets.SQL_ENGINE }} >> .env
+          echo SQL_DATABASE=ci_db_test >> .env
+          echo SQL_USER=postgres >> .env
+          echo SQL_PASSWORD=postgres >> .env
+          echo SQL_HOST=${{ secrets.SQL_HOST}} >> .env
+          echo SQL_PORT=5432 >> .env
+          echo DATABASE=postgres >> .env
+          echo DJANGO_PORT=8000 >> .env
+          echo DJANGO_SETTINGS_MODULE=config.settings.prod >> .env
+
       - name: Branch name if push
         if: github.event_name == 'push'
         run: |
@@ -129,24 +143,8 @@ jobs:
           docker run -d -p 8000:8000 -e PORT=$PORT -e SECRET_KEY=$SECRET_KEY \
             --name latest_image ${{ env.WEB_IMAGE }}:"${{ env.BRANCH_REF}}"
 
-      - name: Add variables to .env
-        run: |
-          echo SECRET_KEY=secretkeyfortests >> .env
-          echo DJANGO_ALLOWED_HOSTS=${{ secrets.DJANGO_ALLOWED_HOSTS }} >> .env
-          echo SQL_ENGINE=${{ secrets.SQL_ENGINE }} >> .env
-          echo SQL_DATABASE=ci_db_test >> .env
-          echo SQL_USER=postgres >> .env
-          echo SQL_PASSWORD=postgres >> .env
-          echo SQL_HOST=${{ secrets.SQL_HOST}} >> .env
-          echo SQL_PORT=5432 >> .env
-          echo DATABASE=postgres >> .env
-          echo DJANGO_PORT=8000 >> .env
-          echo DJANGO_SETTINGS_MODULE=config.settings.prod >> .env
-
       - name: Run tests
         run: |
-          echo SECRET_KEY $SECRET_KEY
-          export SECRET_KEY=asdfasdfasdf
           echo SECRET_KEY $SECRET_KEY
           docker exec -u root -e DEBUG=1 latest_image pytest -p no:warnings --cov=.
           docker exec -u root latest_image flake8

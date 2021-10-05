@@ -11,6 +11,7 @@ REST_FRAMEWORK = {
 }
 
 SECRET_KEY = os.environ.get("SECRET_KEY")
+print("SSSSSS", SECRET_KEY)
 
 DATABASES = {
     "default": {
