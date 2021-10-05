@@ -2,14 +2,9 @@ import datetime
 
 import pytest
 
-from movies.serializers import (
-    ActorSerializer,
-    DirectorSerializer,
-    GenreSerializer,
-    MovieSerializer,
-    OnDemandSerializer,
-    ReviewSerializer,
-)
+from movies.serializers import (ActorSerializer, DirectorSerializer,
+                                GenreSerializer, MovieSerializer,
+                                OnDemandSerializer, ReviewSerializer)
 
 
 @pytest.mark.django_db
