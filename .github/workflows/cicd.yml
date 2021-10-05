@@ -178,7 +178,7 @@ jobs:
           echo DJANGO_PORT $DJANGO_PORT
           echo DJANGO_SETTINGS_MODULE $DJANGO_SETTINGS_MODULE
           pwd
-          ls
+          ls -a
           docker exec -u root -e DEBUG=1 latest_image pytest -p no:cacheprovider -p no:warnings --cov=.
           docker exec -u root latest_image flake8
           docker exec -u root latest_image black --check --exclude=migrations .
