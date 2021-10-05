@@ -103,7 +103,7 @@ jobs:
     needs: build
     env:
       DEBUG: 0
-      SECRET_KEY: tempkeyforbuild
+      SECRET_KEY: ${{ secrets.DJANGO_SECRET_KEY }}
       DJANGO_ALLOWED_HOSTS: localhost 127.0.0.1
       SQL_ENGINE: ${{ secrets.SQL_ENGINE }}
       SQL_DATABASE: ci_db_test
