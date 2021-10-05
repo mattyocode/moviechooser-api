@@ -24,4 +24,11 @@ DATABASES = {
     }
 }
 
+print("ENGINE", os.environ.get("SQL_ENGINE"))
+print("NAME", os.environ.get("SQL_DATABASE"))
+print("USER", os.environ.get("SQL_USER"))
+print("PASSWORD", os.environ.get("SQL_PASSWORD"))
+print("HOST", os.environ.get("SQL_HOST"))
+print("PORT", os.environ.get("SQL_PORT"))
+
 # CORS_ALLOWED_ORIGINS = os.environ.get("CORS_ALLOWED_ORIGINS").split(" ")
