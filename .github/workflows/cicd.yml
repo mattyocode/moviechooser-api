@@ -32,6 +32,7 @@ jobs:
         run: |
           echo $pwd
           pwd
+          ls
           echo DEBUG=0 >> .env
           echo SECRET_KEY=testsecretkey >> .env
           echo DJANGO_ALLOWED_HOSTS=${{ secrets.DJANGO_ALLOWED_HOSTS }} >> .env
@@ -42,6 +43,7 @@ jobs:
           echo SQL_HOST=${{ secrets.SQL_HOST}} >> .env
           echo SQL_PORT=${{ secrets.SQL_PORT}} >> .env
           echo DATABASE=${{ secrets.DATABASE}} >> .env
+          ls
 
       - name: Set up Docker Buildx
         id: buildx
@@ -120,6 +122,7 @@ jobs:
 
       - name: Add variables to .env
         run: |
+          ls
           echo SECRET_KEY=secretkeyfortests >> .env
           echo DJANGO_ALLOWED_HOSTS=${{ secrets.DJANGO_ALLOWED_HOSTS }} >> .env
           echo SQL_ENGINE=${{ secrets.SQL_ENGINE }} >> .env
@@ -131,6 +134,7 @@ jobs:
           echo DATABASE=postgres >> .env
           echo DJANGO_PORT=8000 >> .env
           echo DJANGO_SETTINGS_MODULE=config.settings.prod >> .env
+          ls
 
       - name: Branch name if push
         if: github.event_name == 'push'
@@ -146,17 +150,6 @@ jobs:
 
       - name: Pull image and run container
         run: |
-          export SECRET_KEY=secretkeyfortests
-          export DJANGO_ALLOWED_HOSTS=${{ secrets.DJANGO_ALLOWED_HOSTS }}
-          export SQL_ENGINE=${{ secrets.SQL_ENGINE }}
-          export SQL_DATABASE=ci_db_test
-          export SQL_USER=postgres
-          export SQL_PASSWORD=postgres
-          export SQL_HOST=localhost
-          export SQL_PORT=5432
-          export DATABASE=postgres
-          export DJANGO_PORT=8000
-          export DJANGO_SETTINGS_MODULE=config.settings.prod
           docker pull ${{ env.WEB_IMAGE }}:${{ env.BRANCH_REF}}
           docker run -d -p 8000:8000 -e PORT=$PORT -e SECRET_KEY=testrunkey \
             --name latest_image ${{ env.WEB_IMAGE }}:"${{ env.BRANCH_REF}}"
@@ -184,6 +177,8 @@ jobs:
           echo DATABASE $DATABASE
           echo DJANGO_PORT $DJANGO_PORT
           echo DJANGO_SETTINGS_MODULE $DJANGO_SETTINGS_MODULE
+          pwd
+          ls
           docker exec -u root -e DEBUG=1 latest_image pytest -p no:cacheprovider -p no:warnings --cov=.
           docker exec -u root latest_image flake8
           docker exec -u root latest_image black --check --exclude=migrations .
