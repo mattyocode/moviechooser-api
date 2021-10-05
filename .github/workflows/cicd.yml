@@ -20,6 +20,18 @@ env:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      DEBUG: 0
+      SECRET_KEY: tempkeyforbuild
+      DJANGO_ALLOWED_HOSTS: localhost 127.0.0.1
+      SQL_ENGINE: ${{ secrets.SQL_ENGINE }}
+      SQL_DATABASE: ${{ secrets.SQL_DATABASE }}
+      SQL_USER: ${{ secrets.SQL_USER }}
+      SQL_PASSWORD: ${{ secrets.SQL_PASSWORD}}
+      SQL_HOST: localhost
+      SQL_PORT: 5432
+      DATABASE: postgres
+
     permissions:
       contents: read
       packages: write
@@ -88,6 +100,17 @@ jobs:
   test:
     runs-on: ubuntu-latest
     needs: build
+    env:
+      DEBUG: 0
+      SECRET_KEY: tempkeyforbuild
+      DJANGO_ALLOWED_HOSTS: localhost 127.0.0.1
+      SQL_ENGINE: ${{ secrets.SQL_ENGINE }}
+      SQL_DATABASE: ci_db_test
+      SQL_USER: postgres
+      SQL_PASSWORD: postgres
+      SQL_HOST: localhost
+      SQL_PORT: 5432
+      DATABASE: postgres
 
     services:
       postgres:
@@ -156,17 +179,6 @@ jobs:
 
       - name: Run tests
         run: |
-          export SECRET_KEY=secretkeyfortests
-          export DJANGO_ALLOWED_HOSTS=${{ secrets.DJANGO_ALLOWED_HOSTS }}
-          export SQL_ENGINE=${{ secrets.SQL_ENGINE }}
-          export SQL_DATABASE=ci_db_test
-          export SQL_USER=postgres
-          export SQL_PASSWORD=postgres
-          export SQL_HOST=localhost
-          export SQL_PORT=5432
-          export DATABASE=postgres
-          export DJANGO_PORT=8000
-          export DJANGO_SETTINGS_MODULE=config.settings.prod
           echo SECRET_KEY $SECRET_KEY
           echo SQL_ENGINE $SQL_ENGINE
           echo SQL_DATABASE $SQL_DATABASE
