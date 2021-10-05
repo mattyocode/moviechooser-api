@@ -43,7 +43,7 @@ jobs:
       - name: Add variables to .env
         run: |
           echo DEBUG=0 >> ./app/.env
-          echo SECRET_KEY=testsecretkey >> ./app/.env
+          echo SECRET_KEY=foosecretkeyforbuildtimeonly >> ./app/.env
           echo DJANGO_ALLOWED_HOSTS=${{ secrets.DJANGO_ALLOWED_HOSTS }} >> ./app/.env
           echo SQL_ENGINE=${{ secrets.SQL_ENGINE }} >> ./app/.env
           echo SQL_DATABASE=${{ secrets.SQL_DATABASE }} >> ./app/.env
@@ -157,8 +157,10 @@ jobs:
       - name: Pull image and run container
         run: |
           docker pull ${{ env.WEB_IMAGE }}:${{ env.BRANCH_REF}}
-          docker run -d -p 8000:8000 -e SECRET_KEY=${{ secrets.DJANGO_SECRET_KEY }}\
+          docker run -d -p 8000:8000 -e SECRET_KEY=$SECRET_KEY \
             --name latest_image ${{ env.WEB_IMAGE }}:"${{ env.BRANCH_REF}}"
+        env:
+          SECRET_KEY: ${{ secrets.DJANGO_SECRET_KEY }}
 
       - name: Run tests
         run: |
