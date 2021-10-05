@@ -109,7 +109,7 @@ jobs:
       SQL_DATABASE: ci_db_test
       SQL_USER: postgres
       SQL_PASSWORD: postgres
-      SQL_HOST: db
+      SQL_HOST: localhost
       SQL_PORT: 5432
       DATABASE: postgres
       DJANGO_SETTINGS_MODULE: config.settings.prod
@@ -154,7 +154,7 @@ jobs:
           echo SQL_DATABASE=ci_db_test >> ./app/env_file
           echo SQL_USER=postgres >> ./app/env_file
           echo SQL_PASSWORD=postgres >> ./app/env_file
-          echo SQL_HOST=db >> ./app/env_file
+          echo SQL_HOST=localhost >> ./app/env_file
           echo SQL_PORT=5432 >> ./app/env_file
           echo DATABASE=postgres >> ./app/env_file
           echo DJANGO_PORT=8000 >> ./app/env_file
@@ -176,7 +176,7 @@ jobs:
         run: |
           pwd
           docker pull ${{ env.WEB_IMAGE }}:${{ env.BRANCH_REF}}
-          docker run -d -p 8000:8000 -e PORT=$PORT --env-file=app/env_file \
+          docker run -d -p 8000:8000 -e SECRET_KEY=$SECRET_KEY \
             --name latest_image ${{ env.WEB_IMAGE }}:"${{ env.BRANCH_REF}}"
 
       - name: Run tests
