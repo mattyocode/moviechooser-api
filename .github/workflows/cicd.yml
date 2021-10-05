@@ -150,7 +150,7 @@ jobs:
           export SQL_DATABASE=ci_db_test
           export SQL_USER=postgres
           export SQL_PASSWORD=postgres
-          export SQL_HOST=postgres
+          export SQL_HOST=localhost
           export SQL_PORT=5432
           export DATABASE=postgres
           export DJANGO_PORT=8000
@@ -167,7 +167,7 @@ jobs:
           export SQL_DATABASE=ci_db_test
           export SQL_USER=postgres
           export SQL_PASSWORD=postgres
-          export SQL_HOST=postgres
+          export SQL_HOST=localhost
           export SQL_PORT=5432
           export DATABASE=postgres
           export DJANGO_PORT=8000
