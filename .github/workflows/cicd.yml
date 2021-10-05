@@ -30,6 +30,7 @@ jobs:
 
       - name: Add variables to .env
         run: |
+          echo pwd
           echo DEBUG=0 >> .env
           echo SECRET_KEY=testsecretkey >> .env
           echo DJANGO_ALLOWED_HOSTS=${{ secrets.DJANGO_ALLOWED_HOSTS }} >> .env
