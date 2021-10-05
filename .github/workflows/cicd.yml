@@ -144,6 +144,17 @@ jobs:
 
       - name: Pull image and run container
         run: |
+          export SECRET_KEY=secretkeyfortests
+          export DJANGO_ALLOWED_HOSTS=${{ secrets.DJANGO_ALLOWED_HOSTS }}
+          export SQL_ENGINE=${{ secrets.SQL_ENGINE }}
+          export SQL_DATABASE=ci_db_test
+          export SQL_USER=postgres
+          export SQL_PASSWORD=postgres
+          export SQL_HOST=${{secrets.SQL_HOST}}
+          export SQL_PORT=5432
+          export DATABASE=postgres
+          export DJANGO_PORT=8000
+          export DJANGO_SETTINGS_MODULE=config.settings.prod
           docker pull ${{ env.WEB_IMAGE }}:${{ env.BRANCH_REF}}
           docker run -d -p 8000:8000 -e PORT=$PORT -e SECRET_KEY=testrunkey \
             --name latest_image ${{ env.WEB_IMAGE }}:"${{ env.BRANCH_REF}}"
@@ -160,7 +171,7 @@ jobs:
           export SQL_PORT=5432
           export DATABASE=postgres
           export DJANGO_PORT=8000
-          export DJANGO_SETTINGS_MODULE=config.settings.dev
+          export DJANGO_SETTINGS_MODULE=config.settings.prod
           echo SECRET_KEY $SECRET_KEY
           echo SQL_ENGINE $SQL_ENGINE
           echo SQL_DATABASE $SQL_DATABASE
