@@ -159,7 +159,7 @@ jobs:
           SECRET_KEY: ${{ secrets.DJANGO_SECRET_KEY }}
         run: |
           docker pull ${{ env.WEB_IMAGE }}:${{ env.BRANCH_REF}}
-          docker run -d -p 8000:8000 -e SECRET_KEY="$SECRET_KEY" \
+          docker run -d -p 8000:8000 -e SECRET_KEY="$env:SECRET_KEY" \
             --name latest_image ${{ env.WEB_IMAGE }}:"${{ env.BRANCH_REF}}"
 
       - name: Run tests
