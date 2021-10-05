@@ -153,7 +153,7 @@ jobs:
           echo SQL_DATABASE=ci_db_test >> ./app/env_file
           echo SQL_USER=postgres >> ./app/env_file
           echo SQL_PASSWORD=postgres >> ./app/env_file
-          echo SQL_HOST=postgres >> ./app/env_file
+          echo SQL_HOST=localhost >> ./app/env_file
           echo SQL_PORT=5432 >> ./app/env_file
           echo DATABASE=postgres >> ./app/env_file
           echo DJANGO_PORT=8000 >> ./app/env_file
