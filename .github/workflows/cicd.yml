@@ -146,7 +146,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Add variables to .env
-      run: |
+        run: |
         ls
         echo SECRET_KEY=secretkeyfortests >> ./app/env_file
         echo DJANGO_ALLOWED_HOSTS=${{ secrets.DJANGO_ALLOWED_HOSTS }} >> ./app/env_file
