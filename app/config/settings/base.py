@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/3.2/ref/settings/
 """
 
 import os
+import sys
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -132,4 +133,13 @@ AUTH_USER_MODEL = "accounts.CustomUser"
 REST_FRAMEWORK = {
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 30,
+}
+
+## Test set up
+if 'test' in sys.argv or 'test\_coverage' in sys.argv:
+    DATABASES = {
+    "default": {
+        "ENGINE": 'django.db.backends.sqlite3',
+        "NAME": ':memory:',
+    }
 }
