@@ -94,6 +94,7 @@ jobs:
           cache-to: type=gha, scope=${{ github.workflow }}
           build-args: |
             SECRET_KEY=${{ secrets.SECRET_KEY }}
+
       - name: Show image digest
         run: echo ${{ steps.docker_build.outputs.digest }}
 
