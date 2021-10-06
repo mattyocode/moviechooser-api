@@ -173,4 +173,4 @@ jobs:
           DEBUG: 0
         run: |
           echo DEBUG "$DEBUG"
-          docker exec -u root -e DEBUG="$DEBUG" latest_image python manage.py check --deploy --fail-level=WARNING
+          docker exec -u root -e DEBUG=0 latest_image python manage.py check --deploy --fail-level=WARNING

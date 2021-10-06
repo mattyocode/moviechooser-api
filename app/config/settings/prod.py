@@ -4,6 +4,8 @@ print("PROD SETTINGS RUN")
 
 DEBUG = os.environ.get("DEBUG", 0)
 
+print("DEBUG in prod >> ", DEBUG)
+
 REST_FRAMEWORK = {
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 30,
