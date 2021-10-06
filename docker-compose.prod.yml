@@ -5,6 +5,7 @@ services:
     container_name: core_web
     restart: on-failure
     build: ./nginx
+    env_file: ./nginx/.env.example
     ports:
       - 80:80
     depends_on:
