@@ -2,7 +2,7 @@ from .base import *
 
 print("PROD SETTINGS RUN")
 
-DEBUG = 0
+DEBUG = os.environ.get("DEBUG", 0)
 
 REST_FRAMEWORK = {
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",

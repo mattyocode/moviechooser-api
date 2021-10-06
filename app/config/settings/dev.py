@@ -2,7 +2,7 @@ from .base import *
 
 print("DEV SETTINGS RUN")
 
-DEBUG = 1
+DEBUG = os.environ.get("DEBUG", 1)
 
 SECRET_KEY = "insecure_key_for_dev"
 
