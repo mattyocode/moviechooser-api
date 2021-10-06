@@ -2,7 +2,7 @@ from .base import *
 
 print("LOCAL SETTINGS RUN")
 
-DEBUG = 1
+DEBUG = os.environ.get("DEBUG", 1)
 
 SECRET_KEY = os.environ.get("SECRET_KEY")
 

@@ -1,5 +1,4 @@
 from django.db import models
-from django.db.models import Avg
 from django.db.models.signals import pre_save
 from django.dispatch import receiver
 
@@ -34,15 +33,15 @@ class Movie(models.Model):
     rated = models.CharField(max_length=20, blank=True, null=True)
     released = models.DateField()
     runtime = models.IntegerField(null=True)
-    genre = models.ManyToManyField(Genre, related_name='movie', blank=True)
-    director = models.ManyToManyField(Director, related_name='movie', blank=True)
+    genre = models.ManyToManyField(Genre, related_name="movie", blank=True)
+    director = models.ManyToManyField(Director, related_name="movie", blank=True)
     writer = models.CharField(max_length=1500)
-    actors = models.ManyToManyField(Actor, related_name='movie', blank=True)
+    actors = models.ManyToManyField(Actor, related_name="movie", blank=True)
     plot = models.CharField(max_length=1000, null=True)
     language = models.CharField(max_length=500, null=True)
     country = models.CharField(max_length=500, null=True)
     poster_url = models.CharField(max_length=200)
-    type_field = models.CharField(db_column='type_', max_length=12, null=True)
+    type_field = models.CharField(db_column="type_", max_length=12, null=True)
 
     # @property
     # def average_rating(self):
@@ -59,10 +58,7 @@ def pre_save_receiver(sender, instance, *args, **kwargs):
 
 
 class OnDemand(models.Model):
-    movie = models.ForeignKey(
-        Movie, on_delete=models.CASCADE,
-        related_name='ondemand'
-    )
+    movie = models.ForeignKey(Movie, on_delete=models.CASCADE, related_name="ondemand")
     service = models.CharField(max_length=50)
     url = models.CharField(max_length=300)
     added = models.DateTimeField(auto_now_add=True)
@@ -73,10 +69,7 @@ class OnDemand(models.Model):
 
 
 class Review(models.Model):
-    movie = models.ForeignKey(
-        Movie, on_delete=models.CASCADE,
-        related_name='reviews'
-    )
+    movie = models.ForeignKey(Movie, on_delete=models.CASCADE, related_name="reviews")
     source = models.CharField(max_length=50)
     score = models.IntegerField(null=False)
 

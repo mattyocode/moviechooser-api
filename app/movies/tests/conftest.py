@@ -1,15 +1,15 @@
 import pytest
 from pytest_factoryboy import register
 
-from .factories import GenreFactory, MovieFactory
 from movies.models import Movie
 
+from .factories import GenreFactory, MovieFactory
 
 register(GenreFactory)
 register(MovieFactory)
 
 
-@pytest.fixture(scope='function')
+@pytest.fixture(scope="function")
 def add_movie():
     def _add_movie(imdbid, title, released, runtime, poster_url):
         movie = Movie.objects.create(
@@ -18,6 +18,7 @@ def add_movie():
             released=released,
             runtime=runtime,
             poster_url=poster_url,
-            )
+        )
         return movie
+
     return _add_movie
