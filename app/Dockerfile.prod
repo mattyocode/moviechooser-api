@@ -50,8 +50,8 @@ RUN python manage.py collectstatic --noinput
 
 
 # add and run as non-root user
-RUN adduser --disabled-password myuser
-USER myuser
+# RUN adduser --disabled-password myuser
+# USER myuser
 
 
 ENTRYPOINT ["/app/entrypoint.prod.sh"]
