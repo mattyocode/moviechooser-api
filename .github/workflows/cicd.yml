@@ -169,6 +169,8 @@ jobs:
           docker exec -u root latest_image isort . --check-only
 
       - name: Run django tests
+        env:
+          DEBUG: 0
         run: |
-          echo DEBUG $DEBUG
-          docker exec -u root -e DEBUG=0 latest_image python manage.py check --deploy --fail-level=WARNING
+          echo DEBUG "$DEBUG"
+          docker exec -u root -e DEBUG="$DEBUG" latest_image python manage.py check --deploy --fail-level=WARNING
