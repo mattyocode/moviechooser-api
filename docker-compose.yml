@@ -1,39 +1,63 @@
 version: "3.8"
 
 services:
-  movies:
-    build: ./app
-    command: python manage.py runserver 0.0.0.0:8000
-    environment:
-      - DJANGO_SETTINGS_MODULE=config.settings.dev
+  certbot:
+    image: certbot/certbot
+    container_name: certbot
     volumes:
-      - ./app/:/app/
-    ports:
-      - 8000:8000
-    env_file:
-      - ./app/.env.dev
+      - certbot-etc:/etc/letsencrypt
+      - certbot-var:/var/lib/letsencrypt
+      - web-root:/var/www/html
     depends_on:
-      - mc-dev-db
+      - nginx
+    command: >
+      certonly --webroot --webroot-path=/var/www/html \ 
+      --agree-tos \
+      --staging -d v1.moviechooser.co.uk
 
   nginx:
-    build: ./nginx
+    image: nginx:1.19-alpine
+    container_name: nginx
+    restart: on-failure
+    env_file: ./nginx/.env
+    depends_on:
+      - djangogunicorn
     ports:
       - 80:80
-    depends_on:
-      - movies
-    environment:
-      - DJANGO_HOST=172.29.0.1
-      - DJANGO_PORT=8000
-      - _OUTPUT_DIR=/etc/nginx
-
-  mc-dev-db:
-    image: postgres:13-alpine
+      - 443:443
     volumes:
-      - postgres_data:/var/llib/postgresql/data
+      - web-root:/var/www/html
+      - ./nginx-conf:/etc/nginx/conf.d
+      - certbot-etc:/etc/letsencrypt
+      - certbot-var:/var/lib/letsencrypt
+    networks:
+      - app-network
+    command: "/bin/sh -c 'while :; do sleep 6h & wait $${!}; \
+      nginx -s reload; done & nginx -g \"daemon off;\"'"
+
+  djangogunicorn:
+    build:
+      context: ./app
+      dockerfile: Dockerfile.inst.prod
+    container_name: nginx
+    restart: unless-stopped
+    volumes:
+      - ./app/:/app/
     environment:
-      - POSTGRES_USER=movies
-      - POSTGRES_PASSWORD=movies45654
-      - POSTGRES_DB=mc_dev
+      - DJANGO_SETTINGS_MODULE=config.settings.prod
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./app/.env.local
+    networks:
+      - app-network
 
 volumes:
-  postgres_data:
+  certbot-etc:
+  certbot-var:
+  web-root:
+    driver: local
+
+networks:
+  app-network:
+    driver: bridge

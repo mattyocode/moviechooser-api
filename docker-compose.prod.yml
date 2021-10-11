@@ -1,30 +1,45 @@
 version: "3.8"
 
 services:
+  certbot:
+    image: certbot/certbot
+    volumes:
+      - ./data/certbot/conf:/etc/letsencrypt
+      - ./data/certbot/www:/var/www/certbot
+    entrypoint: "/bin/sh -c 'trap exit TERM; \
+        while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+
   nginx:
-    container_name: core_web
     restart: on-failure
     build: ./nginx
-    env_file: ./nginx/.env.dev
-    links:
-      - movies
+    env_file: ./nginx/.env
+    depends_on:
+      - djangogunicorn
     ports:
       - 80:80
+      - 443:443
+    volumes:
+      - static:/static
+      - ./data/certbot/conf:/etc/letsencrypt
+      - ./data/certbot/www:/var/www/certbot
+    command: "/bin/sh -c 'while :; do sleep 6h & wait $${!}; \
+        nginx -s reload; done & nginx -g \"daemon off;\"'"
 
-  movies:
-    container_name: core_app
+  djangogunicorn:
+    volumes:
+      - static:/static
     build:
       context: ./app
-      dockerfile: Dockerfile.inst.prod
+      dockerfile: Dockerfile.prod
     restart: always
-    command: >
-      sh -c "
-        gunicorn config.wsgi:application --bind 0.0.0.0:8000"
     environment:
       - DJANGO_SETTINGS_MODULE=config.settings.prod
     volumes:
       - ./app/:/app/
     ports:
-      - 8000:8000
+      - "8000:8000"
     env_file:
-      - ./app/.env
+      - ./app/.env.local
+
+volumes:
+  static:

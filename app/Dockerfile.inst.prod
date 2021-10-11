@@ -38,9 +38,8 @@ COPY poetry.lock pyproject.toml /app/
 RUN poetry config virtualenvs.create false \
   && poetry install --no-interaction --no-ansi
 
-# copy entrypoint.prod.sh
+
 COPY ./entrypoint.prod.sh /app/entrypoint.prod.sh
-# RUN chmod 755 /app/entrypoint.prod.sh
 RUN ["chmod", "+x", "/app/entrypoint.prod.sh"]
 
 COPY . .
@@ -53,5 +52,3 @@ RUN python manage.py collectstatic --noinput
 # USER myuser
 
 ENTRYPOINT ["/app/entrypoint.prod.sh"]
-
-CMD gunicorn config.wsgi:application --bind 0.0.0.0:8000 --timeout 1800

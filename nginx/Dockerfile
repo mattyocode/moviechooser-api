@@ -1,10 +1,10 @@
 FROM nginx:1.19-alpine
 
-RUN rm /etc/nginx/conf.d/default.conf
+# RUN mkdir log
 
-RUN mkdir log
+COPY ./default.conf /etc/nginx/conf.d/default.conf
 
-COPY ./nginx.conf /etc/nginx/templates/nginx.conf.template
+# COPY ./nginx.conf /etc/nginx/templates/nginx.conf.template
 
 # COPY ./start.sh ./
 

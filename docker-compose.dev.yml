@@ -1,0 +1,39 @@
+version: "3.8"
+
+services:
+  movies:
+    build: ./app
+    command: python manage.py runserver 0.0.0.0:8000
+    environment:
+      - DJANGO_SETTINGS_MODULE=config.settings.dev
+    volumes:
+      - ./app/:/app/
+    ports:
+      - 8000:8000
+    env_file:
+      - ./app/.env.dev
+    depends_on:
+      - mc-dev-db
+
+  nginx:
+    build: ./nginx
+    ports:
+      - 80:80
+    depends_on:
+      - movies
+    environment:
+      - DJANGO_HOST=172.29.0.1
+      - DJANGO_PORT=8000
+      - _OUTPUT_DIR=/etc/nginx
+
+  mc-dev-db:
+    image: postgres:13-alpine
+    volumes:
+      - postgres_data:/var/llib/postgresql/data
+    environment:
+      - POSTGRES_USER=movies
+      - POSTGRES_PASSWORD=movies45654
+      - POSTGRES_DB=mc_dev
+
+volumes:
+  postgres_data:
