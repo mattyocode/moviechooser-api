@@ -19,7 +19,6 @@ services:
     image: nginx:1.19-alpine
     container_name: nginx
     restart: on-failure
-    env_file: ./nginx/.env
     depends_on:
       - djangogunicorn
     ports:
