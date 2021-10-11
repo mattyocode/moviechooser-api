@@ -39,7 +39,7 @@ services:
     build:
       context: ./app
       dockerfile: Dockerfile.inst.prod
-    container_name: nginx
+    container_name: djangogunicorn
     restart: unless-stopped
     volumes:
       - ./app/:/app/
@@ -48,7 +48,7 @@ services:
     ports:
       - "8000:8000"
     env_file:
-      - ./app/.env.local
+      - ./app/.env
     networks:
       - app-network
 
