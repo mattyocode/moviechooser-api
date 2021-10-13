@@ -1,38 +1,53 @@
 version: "3.8"
 
 services:
-  certbot:
-    image: certbot/certbot
-    container_name: certbot
-    volumes:
-      - certbot-etc:/etc/letsencrypt
-      - certbot-var:/var/lib/letsencrypt
-      - web-root:/var/www/html
-    depends_on:
-      - nginx
-    command: >
-      certonly --webroot --webroot-path=/var/www/html \ 
-      --email test@example.com --agree-tos --no-eff-email \
-      --dry-run -d v1.moviechooser.co.uk
+  # certbot:
+  #   image: certbot/certbot
+  #   container_name: certbot
+  #   volumes:
+  #     - certbot-etc:/etc/letsencrypt
+  #     - certbot-var:/var/lib/letsencrypt
+  #     - web-root:/var/www/html
+  #   depends_on:
+  #     - nginx
+  #   command: >
+  #     certonly --webroot --webroot-path=/var/www/html \
+  #     --email test@example.com --agree-tos --no-eff-email \
+  #     --dry-run -d v1.moviechooser.co.uk
+
+  # nginx:
+  #   image: nginx:1.19-alpine
+  #   container_name: nginx
+  #   restart: on-failure
+  #   depends_on:
+  #     - djangogunicorn
+  #   ports:
+  #     - 80:80
+  #     - 443:443
+  #   volumes:
+  #     - web-root:/var/www/html
+  #     - ./nginx-conf:/etc/nginx/conf.d
+  #     - certbot-etc:/etc/letsencrypt
+  #     - certbot-var:/var/lib/letsencrypt
+  #   networks:
+  #     - app-network
+  #   command: "/bin/sh -c 'while :; do sleep 6h & wait $${!}; \
+  #     nginx -s reload; done & nginx -g \"daemon off;\"'"
 
   nginx:
-    image: nginx:1.19-alpine
     container_name: nginx
     restart: on-failure
+    image: jonasal/nginx-certbot:latest
+    env_file:
+      - ./nginx/.env.nginx
+    volumes:
+      - nginx_secrets:/etc/letsencrypt
+      - ./nginx/user_conf.d:/etc/nginx/user_conf.d
+    ports:
+      - "80:80"
+      - "443:443"
     depends_on:
       - djangogunicorn
-    ports:
-      - 80:80
-      - 443:443
-    volumes:
-      - web-root:/var/www/html
-      - ./nginx-conf:/etc/nginx/conf.d
-      - certbot-etc:/etc/letsencrypt
-      - certbot-var:/var/lib/letsencrypt
-    networks:
-      - app-network
-    command: "/bin/sh -c 'while :; do sleep 6h & wait $${!}; \
-      nginx -s reload; done & nginx -g \"daemon off;\"'"
 
   djangogunicorn:
     build:
