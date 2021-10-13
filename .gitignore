@@ -8,4 +8,6 @@ fixtures/
 .env
 .env.prod
 docker-compose.local.yml
+docker-compose.dev.yml
+docker-compose.prod.yml
 Dockerfile.local
