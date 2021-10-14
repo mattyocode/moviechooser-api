@@ -4,8 +4,7 @@ services:
   nginx:
     container_name: core_web
     restart: on-failure
-    build: ./nginx
-    env_file: ./nginx/.env.example
+    image: nginx:latest
     ports:
       - 80:80
     depends_on:

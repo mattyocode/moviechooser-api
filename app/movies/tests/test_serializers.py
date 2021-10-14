@@ -158,3 +158,30 @@ def test_invalid_review_serializer():
         "source": ["This field is required."],
         "score": ["This field is required."],
     }
+
+
+@pytest.mark.django_db
+def test_valid_genre_order_serializer():
+    valid_serializer_data = {
+        'name': 'Comedy'
+    }
+    serializer = GenreSerializer(data=valid_serializer_data)
+    assert serializer.is_valid()
+    assert serializer.validated_data == valid_serializer_data
+    assert serializer.data == valid_serializer_data
+    assert serializer.errors == {}
+
+
+# def test_invalid_genre_order_serializer():
+#     invalid_serializer_data = {
+#         "title": "Tester: Revenge of the Test",
+#     }
+#     serializer = MovieSerializer(data=invalid_serializer_data)
+#     assert not serializer.is_valid()
+#     assert serializer.validated_data == {}
+#     assert serializer.data == invalid_serializer_data
+#     assert serializer.errors == {
+#         "poster_url": ["This field is required."],
+#         "released": ["This field is required."],
+#         "writer": ["This field is required."],
+#     }

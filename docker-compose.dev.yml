@@ -16,7 +16,7 @@ services:
       - mc-dev-db
 
   nginx:
-    build: ./nginx
+    image: nginx:latest
     ports:
       - 80:80
     depends_on:

@@ -14,3 +14,4 @@ docker-compose.prod.yml
 Dockerfile.local
 .env.staging.proxy-companion
 .env.prod.proxy-companion
+db_copy.json
