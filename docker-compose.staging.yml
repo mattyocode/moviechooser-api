@@ -13,7 +13,8 @@ services:
     expose:
       - "8000"
     env_file:
-      - ./app/.env.prod
+      - ./app/.env.staging
+    # network_mode: bridge
 
   nginx-proxy:
     container_name: nginx-proxy
@@ -31,11 +32,12 @@ services:
       - /var/run/docker.sock:/tmp/docker.sock:ro
     depends_on:
       - djangogunicorn
+    # network_mode: bridge
 
   nginx-proxy-letsencrypt:
     image: nginxproxy/acme-companion
     env_file:
-      - ./nginx/.env.prod.proxy-companion
+      - ./nginx/.env.staging.proxy-companion
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - certs:/etc/nginx/certs
@@ -44,6 +46,7 @@ services:
       - acme:/etc/acme.sh
     depends_on:
       - nginx-proxy
+    # network_mode: bridge
 
 volumes:
   static_volume:
@@ -52,3 +55,7 @@ volumes:
   html:
   vhost:
   acme:
+# networks:
+#   default:
+#     external:
+#       name: nginx-proxy
