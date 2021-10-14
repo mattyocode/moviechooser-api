@@ -5,7 +5,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from .models import Movie
-from .serializers import MovieSerializer
+from .serializers import GenreSerializer, MovieSerializer
 
 
 class MovieList(ListAPIView):
@@ -35,14 +35,6 @@ class MovieList(ListAPIView):
 
         return movies.order_by("-avg_rating")
 
-    # def get(self, request):
-    #     movies = Movie.objects.all()
-    #     genres = request.GET.get("genre")
-    #     if genres:
-    #         movies = Movie.objects.filter(genre=genres)
-    #     serializer = MovieSerializer(movies, many=True)
-    #     return Response(serializer.data)
-
 
 class MovieDetail(APIView):
     def get_object(self, slug):
@@ -56,3 +48,7 @@ class MovieDetail(APIView):
         movie.avg_rating = movie.reviews.aggregate(avg_score=Avg("score"))["avg_score"]
         serializer = MovieSerializer(movie)
         return Response(serializer.data)
+
+
+class GenreList(ListAPIView):
+    serializer_class = GenreSerializer

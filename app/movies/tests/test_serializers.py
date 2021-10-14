@@ -172,16 +172,13 @@ def test_valid_genre_order_serializer():
     assert serializer.errors == {}
 
 
-# def test_invalid_genre_order_serializer():
-#     invalid_serializer_data = {
-#         "title": "Tester: Revenge of the Test",
-#     }
-#     serializer = MovieSerializer(data=invalid_serializer_data)
-#     assert not serializer.is_valid()
-#     assert serializer.validated_data == {}
-#     assert serializer.data == invalid_serializer_data
-#     assert serializer.errors == {
-#         "poster_url": ["This field is required."],
-#         "released": ["This field is required."],
-#         "writer": ["This field is required."],
-#     }
+def test_invalid_genre_order_serializer():
+    invalid_serializer_data = {
+    }
+    serializer = GenreSerializer(data=invalid_serializer_data)
+    assert not serializer.is_valid()
+    assert serializer.validated_data == {}
+    assert serializer.data == invalid_serializer_data
+    assert serializer.errors == {
+        "name": ["This field is required."],
+    }

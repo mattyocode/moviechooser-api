@@ -300,3 +300,15 @@ def test_get_movies_with_avg_review(client):
     assert json_obj["results"][1]["title"] == bad_movie.title
     assert json_obj["results"][0]["avg_rating"] == 88.0
     assert json_obj["results"][1]["avg_rating"] == 35.0
+
+
+@pytest.mark.django_db
+def test_get_genre_queryset_filtered_by_number_of_movies(client):
+    MovieWithGenreFactory.create(title="Funny Tests", genre=["comedy"], runtime=90)
+    MovieWithGenreFactory.create(title="Scary Tests", genre=["horror"], runtime=120)
+    MovieWithGenreFactory.create(title="Funny 2 Tests", genre=["comedy"], runtime=150)
+
+    resp = client.get("/api/genres/")
+    assert resp.status_code == 200
+    assert "Comedy" in json.dumps(resp.data)
+    assert "Horror" in json.dumps(resp.data)
