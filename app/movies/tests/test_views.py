@@ -324,7 +324,6 @@ def test_get_genre_queryset_filtered_by_number_of_movies_most_entries_first(clie
     MovieWithGenreFactory.create(title="Funny 3 Tests", genre=["comedy"], runtime=90)
     MovieWithGenreFactory.create(title="Scary 2 Tests", genre=["horror"], runtime=120)
 
-
     resp = client.get("/api/genres/")
 
     assert resp.status_code == 200
