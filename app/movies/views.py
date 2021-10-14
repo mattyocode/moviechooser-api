@@ -1,10 +1,10 @@
-from django.db.models import Avg
+from django.db.models import Avg, Count
 from django.http import Http404
 from rest_framework.generics import ListAPIView
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import Movie
+from .models import Genre, Movie
 from .serializers import GenreSerializer, MovieSerializer
 
 
@@ -52,3 +52,9 @@ class MovieDetail(APIView):
 
 class GenreList(ListAPIView):
     serializer_class = GenreSerializer
+
+    def get(self, request):
+        genres = Genre.objects.annotate(movie_count=Count('movie'))
+        genres = genres.order_by('-movie_count')
+        serializer = GenreSerializer(genres, many=True)
+        return Response(serializer.data)
