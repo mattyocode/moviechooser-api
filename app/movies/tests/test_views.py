@@ -1,5 +1,6 @@
 import datetime
 import json
+from unittest import mock
 
 import pytest
 
@@ -45,10 +46,11 @@ def test_get_random_movie(client, add_movie):
         runtime="100",
         poster_url="www.example.com/image/location/img.jpg",
     )
-    resp = client.get("/api/movies/random")
-    assert resp.status_code == 200
-    assert "Tester" or "Revenge" in json.dumps(resp.data)
-    assert "Tester" and "Revenge" not in json.dumps(resp.data)
+    with mock.patch('random.choice', return_value=movie_two):
+        resp = client.get("/api/movies/random")
+        assert resp.status_code == 200
+        assert "Revenge" in json.dumps(resp.data)
+        assert "Tester" not in json.dumps(resp.data)
 
 
 @pytest.mark.django_db
@@ -198,6 +200,21 @@ def test_get_queryset_filtered_by_release_single_decade(client):
     assert resp.status_code == 200
     assert "Funny Tests" in json.dumps(resp.data)
     assert "Scary Tests" not in json.dumps(resp.data)
+
+
+@pytest.mark.django_db
+def test_get_queryset_filtered_by_release_pre_1960s(client):
+    MovieWithGenreFactory.create(
+        title="Old Tests", genre=["comedy"], released=datetime.date(1940, 1, 1)
+    )
+    MovieWithGenreFactory.create(
+        title="New Tests", genre=["horror"], released=datetime.date(1961, 12, 31)
+    )
+
+    resp = client.get("/api/movies/?dmin=pre&dmax=pre")
+    assert resp.status_code == 200
+    assert "Old Tests" in json.dumps(resp.data)
+    assert "New Tests" not in json.dumps(resp.data)
 
 
 @pytest.mark.django_db

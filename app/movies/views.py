@@ -28,6 +28,10 @@ class MovieList(ListAPIView):
             movies = movies.all()
 
         if start_decade and end_decade:
+            if start_decade == "pre":
+                start_decade = 1920
+            if end_decade == "pre":
+                end_decade = 1959
             movies = movies.filter(
                 released__range=[f"{start_decade}-01-01", f"{end_decade}-12-31"]
             )
