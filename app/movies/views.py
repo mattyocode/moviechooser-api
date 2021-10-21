@@ -1,3 +1,5 @@
+import random
+
 from django.db.models import Avg, Count
 from django.http import Http404
 from rest_framework.generics import ListAPIView
@@ -47,6 +49,14 @@ class MovieDetail(APIView):
         movie = self.get_object(slug)
         movie.avg_rating = movie.reviews.aggregate(avg_score=Avg("score"))["avg_score"]
         serializer = MovieSerializer(movie)
+        return Response(serializer.data)
+
+class RandomMovie(APIView):
+    def get(self, request):
+        movies = list(Movie.objects.all())
+        random_movie = random.choice(movies)
+        random_movie.avg_rating = random_movie.reviews.aggregate(avg_score=Avg("score"))["avg_score"]
+        serializer = MovieSerializer(random_movie)
         return Response(serializer.data)
 
 
