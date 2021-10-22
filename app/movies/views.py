@@ -37,7 +37,18 @@ class MovieList(ListAPIView):
             )
 
         if runtime_from and runtime_to:
-            movies = movies.filter(runtime__range=[f"{runtime_from}", f"{runtime_to}"])
+            if runtime_from == "<75":
+                runtime_from = 0
+            if runtime_to == "<75":
+                runtime_to = 74
+            if runtime_from == ">150":
+                runtime_from = 151
+            if runtime_to == ">150":
+                runtime_to = 400
+            if runtime_from == runtime_to:
+                runtime_from = int(runtime_from) - 3
+                runtime_to = int(runtime_to) + 3
+            movies = movies.filter(runtime__range=[runtime_from, runtime_to])
 
         return movies.order_by("-avg_rating")
 

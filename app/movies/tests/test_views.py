@@ -47,7 +47,7 @@ def test_get_random_movie(client, add_movie):
         poster_url="www.example.com/image/location/img.jpg",
     )
     with mock.patch("random.choice", return_value=movie_two):
-        resp = client.get("/api/movies/random")
+        resp = client.get("/api/movies/random/")
         assert resp.status_code == 200
         assert "Revenge" in json.dumps(resp.data)
         assert "Tester" not in json.dumps(resp.data)
@@ -267,9 +267,20 @@ def test_get_queryset_filtered_by_release_decade_range(client):
 
 
 @pytest.mark.django_db
-def test_get_queryset_filtered_by_runtime(client):
+def test_get_queryset_filtered_by_single_runtime(client):
     MovieWithGenreFactory.create(title="Funny Tests", genre=["comedy"], runtime=90)
     MovieWithGenreFactory.create(title="Scary Tests", genre=["horror"], runtime=120)
+
+    resp = client.get("/api/movies/?rmin=90&rmax=90")
+    assert resp.status_code == 200
+    assert "Funny Tests" in json.dumps(resp.data)
+    assert "Scary Tests" not in json.dumps(resp.data)
+
+
+@pytest.mark.django_db
+def test_get_queryset_filtered_by_single_runtime_is_fuzzy(client):
+    MovieWithGenreFactory.create(title="Funny Tests", genre=["comedy"], runtime=93)
+    MovieWithGenreFactory.create(title="Scary Tests", genre=["horror"], runtime=94)
 
     resp = client.get("/api/movies/?rmin=90&rmax=90")
     assert resp.status_code == 200
@@ -288,6 +299,58 @@ def test_get_queryset_filtered_by_runtime_range(client):
     assert "Funny Tests" in json.dumps(resp.data)
     assert "Scary Tests" in json.dumps(resp.data)
     assert "Tense Tests" not in json.dumps(resp.data)
+
+
+@pytest.mark.django_db
+def test_get_queryset_filtered_by_runtime_range_incl_lt(client):
+    MovieWithGenreFactory.create(title="Funny Tests", genre=["comedy"], runtime=25)
+    MovieWithGenreFactory.create(title="Scary Tests", genre=["horror"], runtime=120)
+    MovieWithGenreFactory.create(title="Tense Tests", genre=["thriller"], runtime=150)
+
+    resp = client.get("/api/movies/?rmin=<75&rmax=120")
+    assert resp.status_code == 200
+    assert "Funny Tests" in json.dumps(resp.data)
+    assert "Scary Tests" in json.dumps(resp.data)
+    assert "Tense Tests" not in json.dumps(resp.data)
+
+
+@pytest.mark.django_db
+def test_get_queryset_filtered_by_runtime_range_both_lt(client):
+    MovieWithGenreFactory.create(title="Funny Tests", genre=["comedy"], runtime=25)
+    MovieWithGenreFactory.create(title="Scary Tests", genre=["horror"], runtime=74)
+    MovieWithGenreFactory.create(title="Tense Tests", genre=["thriller"], runtime=75)
+
+    resp = client.get("/api/movies/?rmin=<75&rmax=<75")
+    assert resp.status_code == 200
+    assert "Funny Tests" in json.dumps(resp.data)
+    assert "Scary Tests" in json.dumps(resp.data)
+    assert "Tense Tests" not in json.dumps(resp.data)
+
+
+@pytest.mark.django_db
+def test_get_queryset_filtered_by_runtime_range_incl_gt(client):
+    MovieWithGenreFactory.create(title="Funny Tests", genre=["comedy"], runtime=120)
+    MovieWithGenreFactory.create(title="Scary Tests", genre=["horror"], runtime=150)
+    MovieWithGenreFactory.create(title="Tense Tests", genre=["thriller"], runtime=240)
+
+    resp = client.get("/api/movies/?rmin=150&rmax=>150")
+    assert resp.status_code == 200
+    assert "Funny Tests" not in json.dumps(resp.data)
+    assert "Scary Tests" in json.dumps(resp.data)
+    assert "Tense Tests" in json.dumps(resp.data)
+
+
+@pytest.mark.django_db
+def test_get_queryset_filtered_by_runtime_range_both_gt(client):
+    MovieWithGenreFactory.create(title="Funny Tests", genre=["comedy"], runtime=150)
+    MovieWithGenreFactory.create(title="Scary Tests", genre=["horror"], runtime=151)
+    MovieWithGenreFactory.create(title="Tense Tests", genre=["thriller"], runtime=200)
+
+    resp = client.get("/api/movies/?rmin=>150&rmax=>150")
+    assert resp.status_code == 200
+    assert "Funny Tests" not in json.dumps(resp.data)
+    assert "Scary Tests" in json.dumps(resp.data)
+    assert "Tense Tests" in json.dumps(resp.data)
 
 
 @pytest.mark.django_db
