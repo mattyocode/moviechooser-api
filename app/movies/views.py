@@ -60,7 +60,9 @@ class RandomMovie(APIView):
     def get(self, request):
         movies = list(Movie.objects.all())
         random_movie = random.choice(movies)
-        random_movie.avg_rating = random_movie.reviews.aggregate(avg_score=Avg("score"))["avg_score"]
+        random_movie.avg_rating = random_movie.reviews.aggregate(
+            avg_score=Avg("score")
+        )["avg_score"]
         serializer = MovieSerializer(random_movie)
         return Response(serializer.data)
 
@@ -69,7 +71,7 @@ class GenreList(ListAPIView):
     serializer_class = GenreSerializer
 
     def get(self, request):
-        genres = Genre.objects.annotate(movie_count=Count('movie'))
-        genres = genres.order_by('-movie_count')
+        genres = Genre.objects.annotate(movie_count=Count("movie"))
+        genres = genres.order_by("-movie_count")
         serializer = GenreSerializer(genres, many=True)
         return Response(serializer.data)

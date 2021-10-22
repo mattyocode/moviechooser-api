@@ -162,9 +162,7 @@ def test_invalid_review_serializer():
 
 @pytest.mark.django_db
 def test_valid_genre_order_serializer():
-    valid_serializer_data = {
-        'name': 'Comedy'
-    }
+    valid_serializer_data = {"name": "Comedy"}
     serializer = GenreSerializer(data=valid_serializer_data)
     assert serializer.is_valid()
     assert serializer.validated_data == valid_serializer_data
@@ -173,8 +171,7 @@ def test_valid_genre_order_serializer():
 
 
 def test_invalid_genre_order_serializer():
-    invalid_serializer_data = {
-    }
+    invalid_serializer_data = {}
     serializer = GenreSerializer(data=invalid_serializer_data)
     assert not serializer.is_valid()
     assert serializer.validated_data == {}

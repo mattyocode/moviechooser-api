@@ -46,7 +46,7 @@ def test_get_random_movie(client, add_movie):
         runtime="100",
         poster_url="www.example.com/image/location/img.jpg",
     )
-    with mock.patch('random.choice', return_value=movie_two):
+    with mock.patch("random.choice", return_value=movie_two):
         resp = client.get("/api/movies/random")
         assert resp.status_code == 200
         assert "Revenge" in json.dumps(resp.data)
@@ -388,7 +388,9 @@ def test_get_genre_queryset_filtered_by_number_of_movies(client):
 def test_get_genre_queryset_filtered_by_number_of_movies_most_entries_first(client):
     MovieWithGenreFactory.create(title="Funny Tests", genre=["comedy"], runtime=90)
     MovieWithGenreFactory.create(title="Scary Tests", genre=["horror"], runtime=120)
-    MovieWithGenreFactory.create(title="Thrilling Tests", genre=["thriller"], runtime=150)
+    MovieWithGenreFactory.create(
+        title="Thrilling Tests", genre=["thriller"], runtime=150
+    )
     MovieWithGenreFactory.create(title="Funny 2 Tests", genre=["comedy"], runtime=150)
     MovieWithGenreFactory.create(title="Funny 3 Tests", genre=["comedy"], runtime=90)
     MovieWithGenreFactory.create(title="Scary 2 Tests", genre=["horror"], runtime=120)
