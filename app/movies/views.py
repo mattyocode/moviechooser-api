@@ -29,11 +29,11 @@ class MovieList(ListAPIView):
 
         if start_decade and end_decade:
             if start_decade == "pre":
-                start_decade = 1920
+                start_decade = "1920"
             if end_decade == "pre":
-                end_decade = 1959
+                end_decade = "1959"
             movies = movies.filter(
-                released__range=[f"{start_decade}-01-01", f"{end_decade}-12-31"]
+                released__range=[f"{start_decade}-01-01", f"{end_decade[:3]}9-12-31"]
             )
 
         if runtime_from and runtime_to:
@@ -54,6 +54,7 @@ class MovieDetail(APIView):
         movie.avg_rating = movie.reviews.aggregate(avg_score=Avg("score"))["avg_score"]
         serializer = MovieSerializer(movie)
         return Response(serializer.data)
+
 
 class RandomMovie(APIView):
     def get(self, request):

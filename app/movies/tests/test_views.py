@@ -32,7 +32,7 @@ def test_get_single_movie_incorrect_id(client):
 
 @pytest.mark.django_db
 def test_get_random_movie(client, add_movie):
-    movie_one = add_movie(
+    add_movie(
         imdbid="test1234",
         title="Tester",
         released="2021-01-14",
@@ -203,18 +203,48 @@ def test_get_queryset_filtered_by_release_single_decade(client):
 
 
 @pytest.mark.django_db
-def test_get_queryset_filtered_by_release_pre_1960s(client):
+def test_get_queryset_filtered_by_release_pre_1960s_only(client):
     MovieWithGenreFactory.create(
-        title="Old Tests", genre=["comedy"], released=datetime.date(1940, 1, 1)
+        title="Old Movie", genre=["comedy"], released=datetime.date(1940, 1, 1)
     )
     MovieWithGenreFactory.create(
-        title="New Tests", genre=["horror"], released=datetime.date(1961, 12, 31)
+        title="New Movie", genre=["horror"], released=datetime.date(1961, 12, 31)
     )
 
     resp = client.get("/api/movies/?dmin=pre&dmax=pre")
     assert resp.status_code == 200
-    assert "Old Tests" in json.dumps(resp.data)
-    assert "New Tests" not in json.dumps(resp.data)
+    assert "Old Movie" in json.dumps(resp.data)
+    assert "New Movie" not in json.dumps(resp.data)
+
+
+@pytest.mark.django_db
+def test_get_queryset_filtered_by_release_pre_1960s_with_numeric_decade(client):
+    MovieWithGenreFactory.create(
+        title="Old Movie", genre=["comedy"], released=datetime.date(1940, 1, 1)
+    )
+    MovieWithGenreFactory.create(
+        title="New Movie", genre=["horror"], released=datetime.date(1961, 12, 31)
+    )
+
+    resp = client.get("/api/movies/?dmin=pre&dmax=1960")
+    assert resp.status_code == 200
+    assert "Old Movie" in json.dumps(resp.data)
+    assert "New Movie" in json.dumps(resp.data)
+
+
+@pytest.mark.django_db
+def test_get_queryset_filtered_by_release_current_only(client):
+    MovieWithGenreFactory.create(
+        title="Old Movie", genre=["comedy"], released=datetime.date(1940, 1, 1)
+    )
+    MovieWithGenreFactory.create(
+        title="New Movie", genre=["horror"], released=datetime.date(2021, 1, 31)
+    )
+
+    resp = client.get("/api/movies/?dmin=2020&dmax=2020")
+    assert resp.status_code == 200
+    assert "Old Movie" not in json.dumps(resp.data)
+    assert "New Movie" in json.dumps(resp.data)
 
 
 @pytest.mark.django_db
