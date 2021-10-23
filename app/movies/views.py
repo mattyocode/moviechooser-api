@@ -50,7 +50,7 @@ class MovieList(ListAPIView):
                 runtime_to = int(runtime_to) + 3
             movies = movies.filter(runtime__range=[runtime_from, runtime_to])
 
-        return movies.order_by("-avg_rating")
+        return movies.order_by("-avg_rating").distinct()
 
 
 class MovieDetail(APIView):
