@@ -4,19 +4,16 @@ from unittest import mock
 
 import pytest
 
-from movies.models import Actor, Director, Genre, OnDemand, Review
+from movies.models import Actor, Director, OnDemand
 
 from .factories import MovieFactory, MovieWithGenreFactory
 
 
 @pytest.mark.django_db
-def test_get_single_movie(client, add_movie):
-    movie = add_movie(
-        imdbid="test1234",
+def test_get_single_movie(client):
+    movie = MovieFactory(
+        imdbid="test0987",
         title="Tester",
-        released="2021-01-14",
-        runtime="100",
-        poster_url="www.example.com/image/location/img.jpg",
     )
     resp = client.get(f"/api/movies/{movie.slug}/")
     assert resp.status_code == 200
@@ -32,19 +29,11 @@ def test_get_single_movie_incorrect_id(client):
 
 @pytest.mark.django_db
 def test_get_random_movie(client, add_movie):
-    add_movie(
-        imdbid="test1234",
+    MovieFactory(
         title="Tester",
-        released="2021-01-14",
-        runtime="100",
-        poster_url="www.example.com/image/location/img.jpg",
     )
-    movie_two = add_movie(
-        imdbid="test0987",
+    movie_two = MovieFactory(
         title="Test 2: Revenge of the Test",
-        released="2021-01-14",
-        runtime="100",
-        poster_url="www.example.com/image/location/img.jpg",
     )
     with mock.patch("random.choice", return_value=movie_two):
         resp = client.get("/api/movies/random/")
@@ -55,19 +44,11 @@ def test_get_random_movie(client, add_movie):
 
 @pytest.mark.django_db
 def test_get_all_movies(client, add_movie):
-    movie_one = add_movie(
-        imdbid="test1234",
+    movie_one = MovieFactory(
         title="Tester",
-        released="2021-01-14",
-        runtime="100",
-        poster_url="www.example.com/image/location/img.jpg",
     )
-    movie_two = add_movie(
-        imdbid="test0987",
+    movie_two = MovieFactory(
         title="Test 2: Revenge of the Test",
-        released="2021-01-14",
-        runtime="100",
-        poster_url="www.example.com/image/location/img.jpg",
     )
     resp = client.get("/api/movies/")
     assert resp.status_code == 200
@@ -77,14 +58,7 @@ def test_get_all_movies(client, add_movie):
 
 @pytest.mark.django_db
 def test_get_single_movie_with_genre(client, add_movie):
-    movie = add_movie(
-        imdbid="test1234",
-        title="Tester",
-        released="2021-01-14",
-        runtime="100",
-        poster_url="www.example.com/image/location/img.jpg",
-    )
-    movie.genre.add(Genre.objects.create(name="Comedy"))
+    movie = MovieWithGenreFactory(title="Tester", genre=["Comedy"])
     resp = client.get(f"/api/movies/{movie.slug}/")
     assert resp.status_code == 200
     assert resp.data["title"] == "Tester"
@@ -93,12 +67,8 @@ def test_get_single_movie_with_genre(client, add_movie):
 
 @pytest.mark.django_db
 def test_get_single_movie_with_actor(client, add_movie):
-    movie = add_movie(
-        imdbid="test1234",
+    movie = MovieFactory(
         title="Tester",
-        released="2021-01-14",
-        runtime="100",
-        poster_url="www.example.com/image/location/img.jpg",
     )
     movie.actors.add(Actor.objects.create(name="Clem Fandango"))
     resp = client.get(f"/api/movies/{movie.slug}/")
@@ -109,13 +79,7 @@ def test_get_single_movie_with_actor(client, add_movie):
 
 @pytest.mark.django_db
 def test_get_single_movie_with_director(client, add_movie):
-    movie = add_movie(
-        imdbid="test1234",
-        title="Tester",
-        released="2021-01-14",
-        runtime="100",
-        poster_url="www.example.com/image/location/img.jpg",
-    )
+    movie = MovieWithGenreFactory(title="Tester", genre=["Comedy"])
     director = Director.objects.create(name="Len Z")
     movie.director.add(director)
     resp = client.get(f"/api/movies/{movie.slug}/")
@@ -126,13 +90,7 @@ def test_get_single_movie_with_director(client, add_movie):
 
 @pytest.mark.django_db
 def test_get_single_movie_with_ondemand(client, add_movie):
-    movie = add_movie(
-        imdbid="test1234",
-        title="Tester",
-        released="2021-01-14",
-        runtime="100",
-        poster_url="www.example.com/image/location/img.jpg",
-    )
+    movie = MovieWithGenreFactory(title="Tester", genre=["Comedy"])
     OnDemand.objects.create(movie=movie, service="Google Play", url="googleplay.com/")
     resp = client.get(f"/api/movies/{movie.slug}/")
     assert resp.status_code == 200
@@ -142,20 +100,11 @@ def test_get_single_movie_with_ondemand(client, add_movie):
 
 @pytest.mark.django_db
 def test_get_single_movie_with_review(client, add_movie):
-    movie = add_movie(
-        imdbid="test1234",
-        title="Tester",
-        released="2021-01-14",
-        runtime="100",
-        poster_url="www.example.com/image/location/img.jpg",
-    )
-    Review.objects.create(movie=movie, source="imdb", score=65)
-    Review.objects.create(movie=movie, source="metacritic", score=75)
+    movie = MovieWithGenreFactory(title="Tester", genre=["Comedy"], review=[65, 75])
     resp = client.get(f"/api/movies/{movie.slug}/")
     assert resp.status_code == 200
     assert resp.data["title"] == "Tester"
-    assert "imdb" in resp.data["reviews"][0].values()
-    assert "metacritic" in resp.data["reviews"][1].values()
+    assert "_review" in json.dumps(resp.data)
 
 
 @pytest.mark.django_db
@@ -396,32 +345,19 @@ def test_get_queryset_filtered_by_all_criteria(client):
 
 @pytest.mark.django_db
 def test_get_single_movie_with_avg_review(client):
-    movie = MovieFactory(
-        imdbid="test1234",
-    )
-    Review.objects.create(movie=movie, source="imdb", score=65)
-    Review.objects.create(movie=movie, source="metacritic", score=75)
+    movie = MovieFactory(imdbid="test1234", review=[65, 75])
     resp = client.get(f"/api/movies/{movie.slug}/")
     assert resp.status_code == 200
     assert resp.data["title"] == movie.title
-    assert "imdb" in json.dumps(resp.data)
-    assert "metacritic" in json.dumps(resp.data)
+    assert "review" in json.dumps(resp.data)
     assert resp.data["avg_rating"] == 70.0
 
 
 @pytest.mark.django_db
 def test_get_movies_with_avg_review(client):
-    bad_movie = MovieFactory(
-        imdbid="test0987",
-    )
-    Review.objects.create(movie=bad_movie, source="imdb", score=40)
-    Review.objects.create(movie=bad_movie, source="metacritic", score=30)
+    bad_movie = MovieFactory(imdbid="test0987", review=[40, 44])
 
-    good_movie = MovieFactory(
-        imdbid="test1234",
-    )
-    Review.objects.create(movie=good_movie, source="imdb", score=90)
-    Review.objects.create(movie=good_movie, source="metacritic", score=86)
+    good_movie = MovieFactory(imdbid="test1234", review=[90, 86])
 
     resp = client.get("/api/movies/")
 
@@ -431,7 +367,7 @@ def test_get_movies_with_avg_review(client):
     assert json_obj["results"][0]["title"] == good_movie.title
     assert json_obj["results"][1]["title"] == bad_movie.title
     assert json_obj["results"][0]["avg_rating"] == 88.0
-    assert json_obj["results"][1]["avg_rating"] == 35.0
+    assert json_obj["results"][1]["avg_rating"] == 42.0
 
 
 @pytest.mark.django_db
@@ -469,9 +405,33 @@ def test_get_genre_queryset_filtered_by_number_of_movies_most_entries_first(clie
 @pytest.mark.django_db
 def test_get_queryset_single_movie_returned_if_duplicates(client):
     movie1 = MovieWithGenreFactory.create(title="Funny Tests", genre=["comedy"])
-    movie2 = movie1.save()
+    movie1.save()
 
-    resp = client.get(f"/api/movies/")
+    resp = client.get("/api/movies/")
     assert resp.status_code == 200
     print(json.dumps(resp.data))
     assert '"count": 1' in json.dumps(resp.data)
+
+
+@pytest.mark.django_db
+def test_dont_return_movies_with_avg_score_below_40(client):
+    MovieWithGenreFactory.create(title="Funny Tests", genre=["comedy"], review=[41])
+    MovieWithGenreFactory.create(title="Scary Tests", genre=["horror"], review=[39])
+
+    resp = client.get("/api/movies/")
+
+    assert resp.status_code == 200
+    assert "Funny Tests" in json.dumps(resp.data)
+    assert "Scary Tests" not in json.dumps(resp.data)
+
+
+@pytest.mark.django_db
+def test_dont_return_movies_with_no_avg_score(client):
+    MovieWithGenreFactory.create(title="Funny Tests", genre=["comedy"], review=[41])
+    MovieWithGenreFactory.create(title="Scary Tests", genre=["horror"], review=[-1])
+
+    resp = client.get("/api/movies/")
+
+    assert resp.status_code == 200
+    assert "Funny Tests" in json.dumps(resp.data)
+    assert "Scary Tests" not in json.dumps(resp.data)

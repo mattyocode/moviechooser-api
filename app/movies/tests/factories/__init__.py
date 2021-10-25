@@ -4,9 +4,19 @@ import factory
 from factory import fuzzy
 from faker import Factory as FakerFactory
 
-from movies.models import Genre, Movie
+from movies.models import Genre, Movie, Review
 
 faker = FakerFactory.create()
+
+
+class ReviewFactory(factory.django.DjangoModelFactory):
+
+    id = factory.Sequence(lambda n: "%03d" % n)
+    source = fuzzy.FuzzyText(length=4, suffix="_review")
+    score = fuzzy.FuzzyInteger(50, 100)
+
+    class Meta:
+        model = Review
 
 
 class GenreFactory(factory.django.DjangoModelFactory):
@@ -30,14 +40,14 @@ class MovieFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = Movie
 
-    # @factory.post_generation
-    # def genre(self, create, extracted, **kwargs):
-    #     if not create:
-    #         return
-    #     if extracted:
-    #         for genre in extracted:
-    #             print("moviefactory >> ", genre)
-    #             self.genre.add(genre)
+    @factory.post_generation
+    def review(self, create, extracted, **kwargs):
+        if not extracted:
+            ReviewFactory(movie=self, score=fuzzy.FuzzyInteger(50, 100))
+        if extracted:
+            for review in extracted:
+                if extracted != -1:
+                    ReviewFactory(movie=self, score=review)
 
 
 class MovieWithGenreFactory(MovieFactory):
