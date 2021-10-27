@@ -13,6 +13,7 @@ docker-compose.prev.yml
 docker-compose.dev.yml
 docker-compose.prod.yml
 docker-compose.preprod.yml
+docker-compose.local.yml
 Dockerfile.local
 .env.staging.proxy-companion
 .env.prod.proxy-companion
