@@ -8,10 +8,13 @@ env
 fixtures/
 .env
 .env.prod
+Dockerfile.local
 docker-compose.prev.yml
 docker-compose.dev.yml
 docker-compose.prod.yml
+docker-compose.preprod.yml
 Dockerfile.local
 .env.staging.proxy-companion
 .env.prod.proxy-companion
 db_copy.json
+movies_data.json
