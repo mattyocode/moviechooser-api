@@ -174,4 +174,7 @@ jobs:
           passphrase: ${{ secrets.AWS_PASSWORD }}
           key: ${{ secrets.AWS_PRIVATE_KEY }}
           port: ${{ secrets.AWS_PORT }}
-          script: ~/.scripts/docker-deploy.sh
+          script: |
+            cd
+            ls -la
+            sudo sh docker-deploy.sh
