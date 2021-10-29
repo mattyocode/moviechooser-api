@@ -440,7 +440,9 @@ def test_dont_return_movies_with_no_avg_score(client):
 @pytest.mark.django_db
 def test_dont_return_movies_with_no_poster_url(client):
     MovieFactory.create(title="No image movie", poster_url="N/A")
-    MovieFactory.create(title="Image movie", )
+    MovieFactory.create(
+        title="Image movie",
+    )
 
     resp = client.get("/api/movies/")
 
