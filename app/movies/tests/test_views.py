@@ -435,3 +435,15 @@ def test_dont_return_movies_with_no_avg_score(client):
     assert resp.status_code == 200
     assert "Funny Tests" in json.dumps(resp.data)
     assert "Scary Tests" not in json.dumps(resp.data)
+
+
+@pytest.mark.django_db
+def test_dont_return_movies_with_no_poster_url(client):
+    MovieFactory.create(title="No image movie", poster_url="N/A")
+    MovieFactory.create(title="Image movie", )
+
+    resp = client.get("/api/movies/")
+
+    assert resp.status_code == 200
+    assert "Image movie" in json.dumps(resp.data)
+    assert "No image movie" not in json.dumps(resp.data)

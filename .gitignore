@@ -19,3 +19,4 @@ Dockerfile.local
 .env.prod.proxy-companion
 db_copy.json
 movies_data.json
+.deployscript
