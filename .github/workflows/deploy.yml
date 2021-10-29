@@ -1,10 +1,11 @@
 name: CI
 on:
   push:
-    branches: [main, "*"]
-
+    branches:
+      - main
   pull_request:
-    branches: [main]
+    branches:
+      - main
 
 env:
   WEB_IMAGE: ghcr.io/${{ github.actor }}/${{ github.repository }}
@@ -156,3 +157,23 @@ jobs:
         run: |
           echo DEBUG "$DEBUG"
           docker exec -u root -e DEBUG=0 latest_image python manage.py check --deploy --fail-level=WARNING
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: test
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v2
+
+      - name: AWS authenticate and run script
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.AWS_HOST }}
+          username: ${{ secrets.AWS_USERNAME }}
+          password: ${{ secrets.AWS_PASSWORD }}
+          key: ${{ secrets.AWS_PRIVATE_KEY }}
+          port: ${{ secrets.AWS_PORT }}
+          script: |
+            cd ~/.scripts
+            sudo sh docker-deploy.sh
