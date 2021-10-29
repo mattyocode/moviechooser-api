@@ -175,4 +175,4 @@ jobs:
           port: ${{ secrets.AWS_PORT }}
           script: |
             cd ~/.scripts
-            sudo sh docker-deploy.sh
+            sh docker-deploy.sh
