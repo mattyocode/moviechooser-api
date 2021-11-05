@@ -1,4 +1,5 @@
 from rest_framework import serializers, status, viewsets
+from rest_framework.generics import get_object_or_404
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import filters
 from rest_framework.response import Response
@@ -12,37 +13,18 @@ class UserViewSet(viewsets.ModelViewSet):
     http_method_names = ['get']
     serializer_class = UserSerializer
     permission_classes = (IsAuthenticated,)
+    lookup_field = "id"
 
     def get_queryset(self):
         if self.request.user.is_superuser:
             return CustomUser.objects.all().order_by('-last_login')
-        raise PermissionDenied(code=401)
+        raise PermissionDenied(code=403)
 
     def get_object(self):
-        lookup_field_value = self.kwargs[self.lookup_field]
+        if self.request.user.is_superuser:
+            filter_kwargs = {self.lookup_field: self.kwargs[self.lookup_field]}
+            obj = get_object_or_404(CustomUser, **filter_kwargs)
+            self.check_object_permissions(self.request, obj)
 
-        obj = CustomUser.objects.get(lookup_field_value)
-        self.check_object_permissions(self.request, obj)
-
-        return obj
-
-# class UserViewSet(viewsets.ModelViewSet):
-#     http_method_names = ['get']
-#     serializer_class = UserSerializer
-#     permission_classes = (IsAuthenticated,)
-#     # filter_backends = [filters.OrderingFilter]
-
-#     def get_queryset(self):
-#         if self.request.user.is_superuser:
-#             print("IS-SUPERUSER")
-#             return CustomUser.objects.all().order_by('-last_login')
-#         else:
-#             return Response(status=status.HTTP_401_UNAUTHORIZED)
-
-#     def get_object(self):
-#         lookup_field_value = self.kwargs[self.lookup_field]
-
-#         obj = CustomUser.objects.get(lookup_field_value)
-#         self.check_object_permissions(self.request, obj)
-
-#         return obj
+            return obj
+        raise PermissionDenied(code=403)
