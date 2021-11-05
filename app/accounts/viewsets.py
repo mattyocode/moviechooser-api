@@ -1,8 +1,6 @@
-from rest_framework import serializers, status, viewsets
+from rest_framework import viewsets
 from rest_framework.generics import get_object_or_404
 from rest_framework.permissions import IsAuthenticated
-from rest_framework import filters
-from rest_framework.response import Response
 from rest_framework.exceptions import PermissionDenied
 
 from .serializers import UserSerializer
@@ -14,6 +12,7 @@ class UserViewSet(viewsets.ModelViewSet):
     serializer_class = UserSerializer
     permission_classes = (IsAuthenticated,)
     lookup_field = "id"
+
 
     def get_queryset(self):
         if self.request.user.is_superuser:
