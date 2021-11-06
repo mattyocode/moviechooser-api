@@ -21,10 +21,6 @@ def test_valid_register_serializer():
     assert serializer.is_valid()
     assert serializer.validated_data == valid_serializer_data
     serializer.save()
-    assert "last_login" in serializer.data
-    assert "uid" in serializer.data
-    assert "is_active" in serializer.data
-    assert "date_joined" in serializer.data
     assert serializer.errors == {}
 
 

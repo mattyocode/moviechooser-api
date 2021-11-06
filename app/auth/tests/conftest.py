@@ -7,10 +7,10 @@ import pytest
 User = get_user_model()
 
 @pytest.fixture
-def auth_user():
+def refresh_client():
     user = User.objects.create_user(username="user1", email="standard@user.com", password="testpw1234")
     client = APIClient()
     refresh = RefreshToken.for_user(user)
     client.credentials(HTTP_AUTHORIZATION=f"JWT {refresh.access_token}")
 
-    return user
+    return client
