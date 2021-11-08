@@ -6,8 +6,6 @@ DEBUG = os.environ.get("DEBUG", 1)
 
 SECRET_KEY = os.environ.get("SECRET_KEY")
 
-print("LOCAL DB ENGINE", os.environ.get("LOCAL_SQL_ENGINE"))
-
 DATABASES = {
     "default": {
         "ENGINE": os.environ.get("LOCAL_SQL_ENGINE"),

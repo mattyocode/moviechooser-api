@@ -10,9 +10,9 @@ def test_create_user():
     )
     assert user.username == "user1"
     assert user.email == "standard@user.com"
-    assert user.is_active == True
-    assert user.is_staff == False
-    assert user.is_superuser == False
+    assert user.is_active is True
+    assert user.is_staff is False
+    assert user.is_superuser is False
 
 
 @pytest.mark.django_db
@@ -23,6 +23,6 @@ def test_create_superuser():
     )
     assert admin_user.username == "admin1"
     assert admin_user.email == "super@user.com"
-    assert admin_user.is_active == True
-    assert admin_user.is_staff == True
-    assert admin_user.is_superuser == True
+    assert admin_user.is_active is True
+    assert admin_user.is_staff is True
+    assert admin_user.is_superuser is True

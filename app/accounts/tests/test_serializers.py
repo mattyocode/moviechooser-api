@@ -1,7 +1,6 @@
 import datetime
 
 import pytest
-from rest_framework import serializers
 
 from accounts.serializers import UserSerializer
 

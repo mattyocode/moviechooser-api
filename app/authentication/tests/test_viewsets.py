@@ -4,7 +4,6 @@ import pytest
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from accounts.models import CustomUser
-from authentication.viewsets import LoginViewSet, RegisterViewSet
 
 
 @pytest.mark.django_db
@@ -107,13 +106,15 @@ def test_refresh_token_successfully(client):
 
 @pytest.mark.django_db
 def test_refresh_token_fails_with_bad_token(client):
-    user = CustomUser.objects.create_user(
+    CustomUser.objects.create_user(
         username="user1", email="standard@user.com", password="testpw1234"
     )
     resp = client.post(
         "/auth/refresh/",
         {
-            "refresh": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
+            "refresh": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.\
+                eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.\
+                    SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
         },
     )
     assert resp.status_code == 401
