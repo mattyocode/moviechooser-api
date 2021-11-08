@@ -5,6 +5,7 @@ from rest_framework import serializers
 
 from accounts.serializers import UserSerializer
 
+
 @pytest.mark.django_db
 def test_valid_user_serializer():
     created_date = datetime.datetime(2021, 1, 14, 0, 0, tzinfo=datetime.timezone.utc)
@@ -20,7 +21,7 @@ def test_valid_user_serializer():
     assert serializer.is_valid()
     assert serializer.validated_data == valid_serializer_data
 
-    valid_serializer_data["date_joined"] = '2021-01-14T00:00:00Z'
-    valid_serializer_data["last_login"] = '2021-02-15T00:00:00Z'
+    valid_serializer_data["date_joined"] = "2021-01-14T00:00:00Z"
+    valid_serializer_data["last_login"] = "2021-02-15T00:00:00Z"
     assert serializer.data == valid_serializer_data
     assert serializer.errors == {}

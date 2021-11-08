@@ -8,9 +8,7 @@ from accounts.models import CustomUser
 @pytest.mark.django_db
 def test_get_all_users_if_superuser(auth_superuser_client):
     CustomUser.objects.create_user(
-        username="user1", 
-        email="standard@user.com", 
-        password="testpw"
+        username="user1", email="standard@user.com", password="testpw"
     )
     resp = auth_superuser_client.get(f"/accounts/user/")
     assert resp.status_code == 200
@@ -22,9 +20,7 @@ def test_get_all_users_if_superuser(auth_superuser_client):
 @pytest.mark.django_db
 def test_not_get_all_users_if_standard_user(auth_user_client):
     CustomUser.objects.create_user(
-        username="user1", 
-        email="standard@user.com", 
-        password="testpw"
+        username="user1", email="standard@user.com", password="testpw"
     )
     resp = auth_user_client.get(f"/accounts/user/")
     assert resp.status_code == 403
@@ -34,9 +30,7 @@ def test_not_get_all_users_if_standard_user(auth_user_client):
 @pytest.mark.django_db
 def test_get_all_users_fails_if_post_request(auth_superuser_client):
     CustomUser.objects.create_user(
-        username="user1", 
-        email="standard@user.com", 
-        password="testpw"
+        username="user1", email="standard@user.com", password="testpw"
     )
     resp = auth_superuser_client.post(f"/accounts/user/")
     assert resp.status_code == 405
@@ -46,9 +40,7 @@ def test_get_all_users_fails_if_post_request(auth_superuser_client):
 @pytest.mark.django_db
 def test_get_single_user_if_superuser(auth_superuser_client):
     user = CustomUser.objects.create_user(
-        username="user1", 
-        email="standard@user.com", 
-        password="testpw"
+        username="user1", email="standard@user.com", password="testpw"
     )
     resp = auth_superuser_client.get(f"/accounts/user/{user.id}/")
     assert resp.status_code == 200
@@ -58,9 +50,7 @@ def test_get_single_user_if_superuser(auth_superuser_client):
 @pytest.mark.django_db
 def test_not_allowed_get_single_user_if_not_superuser(auth_user_client):
     user = CustomUser.objects.create_user(
-        username="user1", 
-        email="standard@user.com", 
-        password="testpw"
+        username="user1", email="standard@user.com", password="testpw"
     )
     resp = auth_user_client.get(f"/accounts/user/{user.id}/")
     assert resp.status_code == 403
