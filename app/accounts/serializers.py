@@ -1,10 +1,11 @@
-from django.contrib.auth import get_user_model
 from rest_framework import serializers
+
+from accounts.models import CustomUser
 
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
-        model = get_user_model()
+        model = CustomUser
         fields = ["uid", "username", "email", "is_active", "date_joined", "last_login"]
         read_only_field = ["uid", "is_active", "date_joined", "last_login"]
         write_only_field = ["password"]
@@ -12,5 +13,5 @@ class UserSerializer(serializers.ModelSerializer):
 
 class UserSnippetSerializer(serializers.ModelSerializer):
     class Meta:
-        model = get_user_model()
+        model = CustomUser
         fields = ["uid", "username", "email", "is_active"]
