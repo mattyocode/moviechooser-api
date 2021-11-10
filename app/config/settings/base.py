@@ -39,6 +39,7 @@ if not DEBUG:
     SECURE_REFERRER_POLICY = "same-origin"
 
 INSTALLED_APPS = [
+    "accounts",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -47,7 +48,6 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "rest_framework",
     "movies",
-    "accounts",
     "authentication",
     "corsheaders",
 ]
