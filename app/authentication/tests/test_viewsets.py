@@ -8,6 +8,7 @@ from accounts.models import CustomUser
 
 @pytest.mark.django_db
 def test_login_successfully(client):
+    #updated
     CustomUser.objects.create_user(
         username="user1", email="standard@user.com", password="testpw1234"
     )
