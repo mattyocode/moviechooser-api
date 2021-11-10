@@ -5,10 +5,8 @@ from django.contrib.auth import get_user_model
 @pytest.mark.django_db
 def test_create_user():
     User = get_user_model()
-    user = User.objects.create_user(
-        username="user1", email="standard@user.com", password="testpw"
-    )
-    assert user.username == "user1"
+    user = User.objects.create_user(email="standard@user.com", password="testpw")
+    assert user.username is None
     assert user.email == "standard@user.com"
     assert user.is_active is True
     assert user.is_staff is False
@@ -16,7 +14,7 @@ def test_create_user():
 
 
 @pytest.mark.django_db
-def test_create_user():
+def test_create_user_with_username():
     User = get_user_model()
     user = User.objects.create_user(
         username="user1", email="standard@user.com", password="testpw"

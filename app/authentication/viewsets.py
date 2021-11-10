@@ -10,8 +10,9 @@ from rest_framework_simplejwt.views import (
     TokenRefreshView,
 )
 
-from .serializers import LoginSerializer, RegisterSerializer
 from accounts.models import CustomUser
+
+from .serializers import LoginSerializer, RegisterSerializer
 
 
 class LoginViewSet(ModelViewSet, TokenObtainPairSerializer):
@@ -50,7 +51,7 @@ class RegisterViewSet(ModelViewSet, TokenObtainPairView):
         user_data = {}
         user_data["email"] = serializer.validated_data["email"]
 
-        try: 
+        try:
             username = serializer.validated_data["username"]
             if CustomUser.objects.filter(username=username).exists():
                 return Response(
@@ -62,7 +63,7 @@ class RegisterViewSet(ModelViewSet, TokenObtainPairView):
             user_data["username"] = serializer.validated_data["username"]
         except KeyError:
             pass
-        
+
         user = serializer.save()
         refresh = RefreshToken.for_user(user)
 

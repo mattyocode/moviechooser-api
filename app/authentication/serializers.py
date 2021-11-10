@@ -1,5 +1,5 @@
 from django.contrib.auth.models import update_last_login
-from django.core.exceptions import ObjectDoesNotExist, ValidationError
+from django.core.exceptions import ObjectDoesNotExist
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework_simplejwt.settings import api_settings
@@ -24,17 +24,11 @@ class RegisterSerializer(UserSerializer):
     def create(self, validated_data):
         try:
             user = CustomUser.objects.get(email=validated_data["email"])
-            # raise ValidationError({"error": "Email already in use"})
         except ObjectDoesNotExist:
-            try:
-                username = validated_data["username"]
-            except KeyError:
+            if "username" not in validated_data:
                 validated_data["username"] = None
             user = CustomUser.objects.create_user(**validated_data)
         return user
-
-
-
 
 
 class LoginSerializer(TokenObtainPairSerializer):
