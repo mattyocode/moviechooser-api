@@ -32,19 +32,3 @@ class CustomUserManager(BaseUserManager):
         if extra_fields.get("is_superuser") is not True:
             raise ValueError(_("Superuser must have is_superuser=True."))
         return self.create_user(email, password, **extra_fields)
-
-
-class CustomUser(AbstractUser):
-    uid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
-    email = models.EmailField(
-        verbose_name="email", max_length=60, unique=True, default=None
-    )
-    username = models.CharField(max_length=24, null=True, unique=True, blank=True)
-
-    USERNAME_FIELD = "email"
-    REQUIRED_FIELDS = []
-
-    objects = CustomUserManager()
-
-    def __str__(self):
-        return self.email
