@@ -1,8 +1,8 @@
 import json
 
 import pytest
-from accounts.models import CustomUser
 
+from accounts.models import CustomUser
 from authentication.serializers import LoginSerializer, RegisterSerializer
 
 User = CustomUser

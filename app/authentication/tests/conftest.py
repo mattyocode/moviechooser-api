@@ -1,7 +1,8 @@
 import pytest
-from accounts.models import CustomUser
 from rest_framework.test import APIClient
 from rest_framework_simplejwt.tokens import RefreshToken
+
+from accounts.models import CustomUser
 
 User = CustomUser
 
