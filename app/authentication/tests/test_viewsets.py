@@ -74,13 +74,16 @@ def test_register_unsuccessful_with_short_password(client):
 
 
 @pytest.mark.django_db
-def test_register_unsuccessful_with_no_username(client):
+def test_register_successful_with_no_username(client):
     resp = client.post(
         "/auth/register/", {"email": "standard@user.com", "password": "test1234"}
     )
-    assert resp.status_code == 400
-    assert "username" in resp.data.keys()
-    assert "This field is required" in json.dumps(resp.data)
+    assert resp.status_code == 201
+    assert "user" in resp.data.keys()
+    assert "refresh" in resp.data.keys()
+    assert "token" in resp.data.keys()
+    assert "email" in resp.data["user"]
+    assert "username" not in resp.data["user"]
 
 
 @pytest.mark.django_db
@@ -89,6 +92,38 @@ def test_register_unsuccessful_with_no_email(client):
     assert resp.status_code == 400
     assert "email" in resp.data.keys()
     assert "This field is required" in json.dumps(resp.data)
+
+
+@pytest.mark.django_db
+def test_cant_register_existing_email(client):
+    resp = client.post(
+        "/auth/register/",
+        {"username": "user1", "email": "standard@user.com", "password": "testpw1234"},
+    )
+    assert resp.status_code == 201
+    assert "standard@user.com" in resp.data["user"]["email"]
+    resp_two = client.post(
+        "/auth/register/",
+        {"username": "user2", "email": "standard@user.com", "password": "testpw1234"},
+    )
+    assert resp_two.status_code == 200
+    assert "Email already in use" in resp_two.data['message']
+
+
+@pytest.mark.django_db
+def test_cant_register_existing_username(client):
+    resp = client.post(
+        "/auth/register/",
+        {"username": "user1", "email": "standard@user.com", "password": "testpw1234"},
+    )
+    assert resp.status_code == 201
+    assert "standard@user.com" in resp.data["user"]["email"]
+    resp_two = client.post(
+        "/auth/register/",
+        {"username": "user1", "email": "other@user.com", "password": "testpw1234"},
+    )
+    assert resp_two.status_code == 200
+    assert "Username already in use" in resp_two.data['message']
 
 
 @pytest.mark.django_db

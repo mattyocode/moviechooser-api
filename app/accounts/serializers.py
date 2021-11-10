@@ -13,4 +13,4 @@ class UserSerializer(serializers.ModelSerializer):
 class UserSnippetSerializer(serializers.ModelSerializer):
     class Meta:
         model = get_user_model()
-        fields = ["username", "email"]
+        fields = ["uid", "username", "email", "is_active"]

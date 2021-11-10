@@ -16,6 +16,19 @@ def test_create_user():
 
 
 @pytest.mark.django_db
+def test_create_user():
+    User = get_user_model()
+    user = User.objects.create_user(
+        username="user1", email="standard@user.com", password="testpw"
+    )
+    assert user.username == "user1"
+    assert user.email == "standard@user.com"
+    assert user.is_active is True
+    assert user.is_staff is False
+    assert user.is_superuser is False
+
+
+@pytest.mark.django_db
 def test_create_superuser():
     User = get_user_model()
     admin_user = User.objects.create_superuser(
