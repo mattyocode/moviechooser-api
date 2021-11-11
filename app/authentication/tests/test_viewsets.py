@@ -19,6 +19,7 @@ def test_login_successfully(client):
     assert "user" in resp.data.keys()
     assert "refresh" in resp.data.keys()
     assert "access" in resp.data.keys()
+    assert "uid" in resp.data["user"].keys()
     assert "standard@user.com" in resp.data["user"]["email"]
     assert "user1" in resp.data["user"]["username"]
     assert "testpw1234" not in json.dumps(resp.data)
@@ -58,6 +59,7 @@ def test_register_successfully(client):
     assert "user" in resp.data.keys()
     assert "token" in resp.data.keys()
     assert "refresh" in resp.data.keys()
+    assert "uid" in resp.data["user"].keys()
     assert "standard@user.com" in resp.data["user"]["email"]
     assert "user1" in resp.data["user"]["username"]
     assert "testpw1234" not in json.dumps(resp.data)

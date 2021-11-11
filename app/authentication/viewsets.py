@@ -65,6 +65,8 @@ class RegisterViewSet(ModelViewSet, TokenObtainPairView):
             pass
 
         user = serializer.save()
+        user_data["uid"] = str(user.uid)
+        user_data["is_active"] = user.is_active
         refresh = RefreshToken.for_user(user)
 
         return Response(
