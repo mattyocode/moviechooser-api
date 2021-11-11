@@ -1,11 +1,11 @@
 import json
 
 import pytest
-from django.contrib.auth import get_user_model
 
+from accounts.models import CustomUser
 from authentication.serializers import LoginSerializer, RegisterSerializer
 
-User = get_user_model()
+User = CustomUser
 
 
 @pytest.mark.django_db

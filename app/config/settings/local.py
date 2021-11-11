@@ -16,3 +16,7 @@ DATABASES = {
         "PORT": os.environ.get("LOCAL_SQL_PORT"),
     }
 }
+
+CORS_ALLOWED_ORIGINS = ["http://localhost:*", "http://0.0.0.0", "http://127.0.0.1"]
+CORS_ORIGIN_ALLOW_ALL = True
+CORS_ORIGIN_WHITELIST = ["http://localhost:*", "http://0.0.0.0", "http://127.0.0.1"]
