@@ -11,7 +11,7 @@ class UserViewSet(viewsets.ModelViewSet):
     http_method_names = ["get"]
     serializer_class = UserSerializer
     permission_classes = (IsAuthenticated,)
-    lookup_field = "id"
+    lookup_field = "uid"
 
     def get_queryset(self):
         if self.request.user.is_superuser:
