@@ -19,10 +19,9 @@ class UserViewSet(viewsets.ModelViewSet):
         raise PermissionDenied(code=403)
 
     def get_object(self):
-        if self.request.user.is_superuser:
-            filter_kwargs = {self.lookup_field: self.kwargs[self.lookup_field]}
-            obj = get_object_or_404(CustomUser, **filter_kwargs)
-            self.check_object_permissions(self.request, obj)
-
-            return obj
-        raise PermissionDenied(code=403)
+        filter_kwargs = {self.lookup_field: self.kwargs[self.lookup_field]}
+        obj = get_object_or_404(CustomUser, **filter_kwargs)
+        if not self.request.user.is_superuser:
+            if str(self.request.user) != obj.email:
+                raise PermissionDenied(code=403)
+        return obj
