@@ -109,8 +109,8 @@ def test_cant_register_existing_email(client):
         "/auth/register/",
         {"username": "user2", "email": "standard@user.com", "password": "testpw1234"},
     )
-    assert resp_two.status_code == 200
-    assert "Email already in use" in resp_two.data["message"]
+    assert resp_two.status_code == 400
+    assert "Email already registered" in json.dumps(resp_two.data)
 
 
 @pytest.mark.django_db
@@ -125,8 +125,8 @@ def test_cant_register_existing_username(client):
         "/auth/register/",
         {"username": "user1", "email": "other@user.com", "password": "testpw1234"},
     )
-    assert resp_two.status_code == 200
-    assert "Username already in use" in resp_two.data["message"]
+    assert resp_two.status_code == 400
+    assert "Username already exists" in json.dumps(resp_two.data)
 
 
 @pytest.mark.django_db

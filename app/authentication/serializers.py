@@ -1,5 +1,4 @@
 from django.contrib.auth.models import update_last_login
-from django.core.exceptions import ObjectDoesNotExist
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework_simplejwt.settings import api_settings
@@ -12,22 +11,15 @@ class RegisterSerializer(UserSerializer):
     password = serializers.CharField(
         max_length=128, min_length=8, write_only=True, required=True
     )
-    username = serializers.CharField(
-        max_length=24, min_length=2, write_only=True, required=False
-    )
-    email = serializers.EmailField(required=True, write_only=True, max_length=128)
 
     class Meta:
         model = CustomUser
         fields = ["uid", "username", "email", "password", "is_active"]
 
     def create(self, validated_data):
-        try:
-            user = CustomUser.objects.get(email=validated_data["email"])
-        except ObjectDoesNotExist:
-            if "username" not in validated_data:
-                validated_data["username"] = None
-            user = CustomUser.objects.create_user(**validated_data)
+        if "username" not in validated_data:
+            validated_data["username"] = None
+        user = CustomUser.objects.create_user(**validated_data)
         return user
 
 
