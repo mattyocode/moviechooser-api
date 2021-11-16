@@ -1,6 +1,8 @@
 import json
 
 import pytest
+from rest_framework.test import APIClient
+from rest_framework_simplejwt.tokens import RefreshToken
 
 from accounts.models import CustomUser
 
@@ -42,16 +44,42 @@ def test_get_single_user_if_superuser(auth_superuser_client):
     user = CustomUser.objects.create_user(
         username="user1", email="standard@user.com", password="testpw"
     )
-    resp = auth_superuser_client.get(f"/accounts/user/{user.id}/")
+    resp = auth_superuser_client.get(f"/accounts/user/{user.uid}/")
     assert resp.status_code == 200
     assert "user1" in json.dumps(resp.data)
 
 
 @pytest.mark.django_db
-def test_not_allowed_get_single_user_if_not_superuser(auth_user_client):
+def test_user_can_only_get_own_profile():
+    user1 = CustomUser.objects.create_user(
+        username="user1", email="standard@user.com", password="testpw123"
+    )
+    refresh = RefreshToken.for_user(user1)
+    client1 = APIClient()
+    client1.credentials(HTTP_AUTHORIZATION=f"JWT {refresh.access_token}")
+
+    user2 = CustomUser.objects.create_user(
+        username="user2", email="another@user.com", password="testpw123"
+    )
+
+    # user1 can't get user2's profile
+    resp = client1.get(f"/accounts/user/{user2.uid}/")
+    assert resp.status_code == 403
+    assert "do not have permission" in json.dumps(resp.data)
+
+    # user1 can get their own profile
+    refresh = RefreshToken.for_user(user1)
+    client1.credentials(HTTP_AUTHORIZATION=f"JWT {refresh.access_token}")
+    resp = client1.get(f"/accounts/user/{user1.uid}/")
+    assert resp.status_code == 200
+    assert "user1" in json.dumps(resp.data)
+
+
+@pytest.mark.django_db
+def test_unauthorized_user_cannot_get_own_profile(client):
     user = CustomUser.objects.create_user(
         username="user1", email="standard@user.com", password="testpw"
     )
-    resp = auth_user_client.get(f"/accounts/user/{user.id}/")
-    assert resp.status_code == 403
-    assert "do not have permission" in json.dumps(resp.data)
+    resp = client.get(f"/accounts/user/{user.uid}/")
+    assert resp.status_code == 401
+    assert "Authentication credentials were not provided" in json.dumps(resp.data)

@@ -13,7 +13,6 @@ def auth_user_client():
     client = APIClient()
     refresh = RefreshToken.for_user(user)
     client.credentials(HTTP_AUTHORIZATION=f"JWT {refresh.access_token}")
-    print("conftest >>>", refresh)
     return client
 
 
@@ -25,5 +24,4 @@ def auth_superuser_client():
     client = APIClient()
     refresh = RefreshToken.for_user(user)
     client.credentials(HTTP_AUTHORIZATION=f"JWT {refresh.access_token}")
-    print("conftest >>>", refresh)
     return client
