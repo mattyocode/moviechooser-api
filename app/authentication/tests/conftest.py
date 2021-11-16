@@ -17,3 +17,19 @@ def refresh_client():
     client.credentials(HTTP_AUTHORIZATION=f"JWT {refresh.access_token}")
 
     return client
+
+
+@pytest.fixture
+def mock_recaptcha_submit(mocker):
+    success_value = {"success": True}
+    mock = mocker.patch("requests.post")
+    mock.return_value.json.return_value = success_value
+    return mock
+
+
+@pytest.fixture
+def mock_recaptcha_fail(mocker):
+    success_value = {"success": False}
+    mock = mocker.patch("requests.post")
+    mock.return_value.json.return_value = success_value
+    return mock

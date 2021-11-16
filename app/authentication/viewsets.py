@@ -11,6 +11,7 @@ from rest_framework_simplejwt.views import (
 )
 
 from .serializers import LoginSerializer, RegisterSerializer
+from .utils import recaptcha_submit
 
 
 class LoginViewSet(ModelViewSet, TokenObtainPairSerializer):
@@ -38,28 +39,40 @@ class RegisterViewSet(ModelViewSet, TokenObtainPairView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        user_data = {}
-        user_data["email"] = serializer.validated_data["email"]
-
-        try:
-            username = serializer.validated_data["username"]
-            user_data["username"] = username
-        except KeyError:
-            pass
-
-        user = serializer.save()
-        user_data["uid"] = str(user.uid)
-        user_data["is_active"] = user.is_active
-        refresh = RefreshToken.for_user(user)
-
-        return Response(
-            {
-                "user": user_data,
-                "refresh": str(refresh),
-                "token": str(refresh.access_token),
-            },
-            status=status.HTTP_201_CREATED,
+        is_valid_recaptcha = recaptcha_submit(
+            serializer.validated_data["recaptcha_key"]
         )
+
+        print("is_valid_recaptcha response ", is_valid_recaptcha)
+        if is_valid_recaptcha is True:
+            user_data = {}
+            user_data["email"] = serializer.validated_data["email"]
+
+            try:
+                username = serializer.validated_data["username"]
+                user_data["username"] = username
+            except KeyError:
+                pass
+
+            user = serializer.save()
+            user_data["uid"] = str(user.uid)
+            user_data["is_active"] = user.is_active
+
+            refresh = RefreshToken.for_user(user)
+
+            return Response(
+                {
+                    "user": user_data,
+                    "refresh": str(refresh),
+                    "token": str(refresh.access_token),
+                },
+                status=status.HTTP_201_CREATED,
+            )
+        else:
+            return Response(
+                data={"error": "ReCAPTCHA not verified."},
+                status=status.HTTP_406_NOT_ACCEPTABLE,
+            )
 
 
 class RefreshViewSet(ViewSet, TokenRefreshView):

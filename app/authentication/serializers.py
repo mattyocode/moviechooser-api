@@ -11,14 +11,17 @@ class RegisterSerializer(UserSerializer):
     password = serializers.CharField(
         max_length=128, min_length=8, write_only=True, required=True
     )
+    recaptcha_key = serializers.CharField(required=True)
 
     class Meta:
         model = CustomUser
-        fields = ["uid", "username", "email", "password", "is_active"]
+        fields = ["uid", "username", "email", "password", "recaptcha_key", "is_active"]
 
     def create(self, validated_data):
         if "username" not in validated_data:
             validated_data["username"] = None
+        if "recaptcha_key" in validated_data:
+            del validated_data["recaptcha_key"]
         user = CustomUser.objects.create_user(**validated_data)
         return user
 
