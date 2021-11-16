@@ -17,7 +17,7 @@ class UserSerializer(serializers.ModelSerializer):
     )
     email = serializers.EmailField(
         required=True,
-        max_length=128,
+        max_length=500,
         validators=[
             UniqueValidator(
                 queryset=CustomUser.objects.all(), message="Email already registered."

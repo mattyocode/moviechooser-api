@@ -3,7 +3,11 @@ import json
 import pytest
 
 from accounts.models import CustomUser
-from authentication.serializers import LoginSerializer, RegisterSerializer
+from authentication.serializers import (
+    LoginSerializer,
+    RegisterSerializer,
+    ResetPasswordEmailSerializer,
+)
 
 User = CustomUser
 
@@ -108,3 +112,24 @@ def test_cant_register_existing_username():
     assert serializer.validated_data == {}
     assert serializer.data == invalid_serializer_data
     assert serializer.errors == {"username": ["Username already exists."]}
+
+
+@pytest.mark.django_db
+def test_valid_password_reset_serializer():
+    valid_serializer_data = {
+        "email": "standard@user.com",
+    }
+    serializer = ResetPasswordEmailSerializer(data=valid_serializer_data)
+    assert serializer.is_valid()
+    assert serializer.validated_data == valid_serializer_data
+    assert serializer.errors == {}
+
+
+@pytest.mark.django_db
+def test_invalid_password_reset_serializer():
+    invalid_serializer_data = {}
+    serializer = ResetPasswordEmailSerializer(data=invalid_serializer_data)
+    assert not serializer.is_valid()
+    assert serializer.validated_data == {}
+    assert serializer.data == invalid_serializer_data
+    assert serializer.errors == {"email": ["This field is required."]}

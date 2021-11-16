@@ -40,3 +40,11 @@ class LoginSerializer(TokenObtainPairSerializer):
             update_last_login(None, self.user)
 
         return data
+
+
+class ResetPasswordEmailSerializer(serializers.Serializer):
+    email = serializers.EmailField(max_length=500)
+    redirect_url = serializers.CharField(max_length=1000, required=False)
+
+    class Meta:
+        fields = ["email"]
