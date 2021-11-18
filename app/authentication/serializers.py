@@ -1,5 +1,9 @@
 from django.contrib.auth.models import update_last_login
+from django.contrib.auth.tokens import PasswordResetTokenGenerator
+from django.utils.encoding import force_str
+from django.utils.http import urlsafe_base64_decode
 from rest_framework import serializers
+from rest_framework.exceptions import AuthenticationFailed
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework_simplejwt.settings import api_settings
 
@@ -48,3 +52,36 @@ class ResetPasswordEmailSerializer(serializers.Serializer):
 
     class Meta:
         fields = ["email"]
+
+
+class SetNewPasswordSerializer(serializers.Serializer):
+    password = serializers.CharField(
+        max_length=128, min_length=8, write_only=True, required=True
+    )
+    token = serializers.CharField(
+        required=True, write_only=True
+    )
+    uidb64 = serializers.CharField(
+        required=True, write_only=True
+    )
+
+    class Meta:
+        fields = ["password", "token", "uidb64"]
+
+    def validate(self, attrs):
+        try:
+            password = attrs.get("password")
+            token = attrs.get("token")
+            uidb64 = attrs.get("uidb64")
+
+            uid = force_str(urlsafe_base64_decode(uidb64))
+            user = CustomUser.objects.get(uid=uid)
+            if not PasswordResetTokenGenerator().check_token(user, token):
+                raise AuthenticationFailed("Reset link is invalid.", 401)
+
+            user.set_password(password)
+            user.save()
+            return user
+        
+        except Exception as e:
+            raise AuthenticationFailed("Reset link is invalid", 401)

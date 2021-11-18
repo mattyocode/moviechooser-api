@@ -1,3 +1,5 @@
+import os
+
 from rest_framework import status
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
@@ -12,6 +14,8 @@ from rest_framework_simplejwt.views import (
 
 from .serializers import LoginSerializer, RegisterSerializer
 from .utils import recaptcha_submit
+
+DEBUG = os.environ.get("DEBUG", 0)
 
 
 class LoginViewSet(ModelViewSet, TokenObtainPairSerializer):
@@ -42,6 +46,9 @@ class RegisterViewSet(ModelViewSet, TokenObtainPairView):
         is_valid_recaptcha = recaptcha_submit(
             serializer.validated_data["recaptcha_key"]
         )
+        
+        # if DEBUG:
+        #     is_valid_recaptcha = True
 
         if is_valid_recaptcha is True:
             user_data = {}

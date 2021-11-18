@@ -133,3 +133,15 @@ def test_invalid_password_reset_serializer():
     assert serializer.validated_data == {}
     assert serializer.data == invalid_serializer_data
     assert serializer.errors == {"email": ["This field is required."]}
+
+
+# @pytest.mark.django_db
+# def test_valid_set_new_password():
+#     valid_serializer_data = {
+#         "password": "test1234",
+
+#     }
+#     serializer = ResetPasswordEmailSerializer(data=valid_serializer_data)
+#     assert serializer.is_valid()
+#     assert serializer.validated_data == valid_serializer_data
+#     assert serializer.errors == {}
