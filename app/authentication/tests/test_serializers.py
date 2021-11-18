@@ -1,5 +1,9 @@
 import json
 
+from django.contrib.auth.tokens import PasswordResetTokenGenerator
+from rest_framework_simplejwt.exceptions import AuthenticationFailed
+from django.utils.encoding import smart_bytes
+from django.utils.http import urlsafe_base64_encode
 import pytest
 
 from accounts.models import CustomUser
@@ -7,6 +11,7 @@ from authentication.serializers import (
     LoginSerializer,
     RegisterSerializer,
     ResetPasswordEmailSerializer,
+    SetNewPasswordSerializer,
 )
 
 User = CustomUser
@@ -135,13 +140,72 @@ def test_invalid_password_reset_serializer():
     assert serializer.errors == {"email": ["This field is required."]}
 
 
-# @pytest.mark.django_db
-# def test_valid_set_new_password():
-#     valid_serializer_data = {
-#         "password": "test1234",
+@pytest.mark.django_db
+def test_valid_set_new_password():
+    user = CustomUser.objects.create_user(email="standard@user.com", password="testpw")
+    uidb64 = urlsafe_base64_encode(smart_bytes(user.uid))
+    token = PasswordResetTokenGenerator().make_token(user)
+    valid_serializer_data = {
+        "password": "test1234",
+        "uidb64": uidb64,
+        "token": token,
+    }
+    serializer = SetNewPasswordSerializer(data=valid_serializer_data)
+    assert serializer.is_valid()
+    assert serializer.validated_data == user
+    assert serializer.errors == {}
 
-#     }
-#     serializer = ResetPasswordEmailSerializer(data=valid_serializer_data)
-#     assert serializer.is_valid()
-#     assert serializer.validated_data == valid_serializer_data
-#     assert serializer.errors == {}
+
+@pytest.mark.django_db
+def test_invalid_set_new_password_short_password():
+    user = CustomUser.objects.create_user(email="standard@user.com", password="testpw")
+    uidb64 = urlsafe_base64_encode(smart_bytes(user.uid))
+    token = PasswordResetTokenGenerator().make_token(user)
+    invalid_serializer_data = {
+        "password": "test",
+        "uidb64": uidb64,
+        "token": token,
+    }
+    serializer = SetNewPasswordSerializer(data=invalid_serializer_data)
+    assert not serializer.is_valid()
+    assert serializer.validated_data == {}
+    # del invalid_serializer_data["recaptcha_key"]
+    assert serializer.data == invalid_serializer_data
+    assert json.dumps(serializer.errors) == '{"password": ["Ensure this field has at least 8 characters."]}'
+
+
+@pytest.mark.django_db
+def test_set_new_password_bad_uidb64():
+    user = CustomUser.objects.create_user(email="standard@user.com", password="testpw")
+    fake_user_uid = "c2cf96e3-172e-4571-bb1a-71ed0f5ce037"
+    uidb64 = urlsafe_base64_encode(smart_bytes(fake_user_uid))
+    token = PasswordResetTokenGenerator().make_token(user)
+    invalid_serializer_data = {
+        "password": "test1234",
+        "uidb64": uidb64,
+        "token": token,
+    }
+    serializer = SetNewPasswordSerializer(data=invalid_serializer_data)
+    assert not serializer.is_valid()
+    assert serializer.validated_data == {}
+    # del invalid_serializer_data["recaptcha_key"]
+    assert serializer.data == invalid_serializer_data
+    assert json.dumps(serializer.errors) == '{"non_field_errors": ["Reset link is invalid"]}'
+
+
+@pytest.mark.django_db
+def test_set_new_password_bad_token():
+    user = CustomUser.objects.create_user(email="standard@user.com", password="testpw")
+    uidb64 = urlsafe_base64_encode(smart_bytes(user.uid))
+    bad_token = "faketn-4a85d1ec5dcbed69570c1b9721b3acca"
+    invalid_serializer_data = {
+        "password": "test1234",
+        "uidb64": uidb64,
+        "token": bad_token,
+    }
+    serializer = SetNewPasswordSerializer(data=invalid_serializer_data)
+    assert not serializer.is_valid()
+    assert serializer.validated_data == {}
+    # del invalid_serializer_data["recaptcha_key"]
+    assert serializer.data == invalid_serializer_data
+    assert json.dumps(serializer.errors) == '{"non_field_errors": ["Reset link is invalid"]}'

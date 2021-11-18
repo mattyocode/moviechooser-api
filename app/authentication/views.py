@@ -3,12 +3,12 @@ import os
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.contrib.sites.shortcuts import get_current_site
 from django.core.mail import send_mail
-from django.core.exceptions import ObjectDoesNotExist
+from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.http import HttpResponsePermanentRedirect
 from django.urls import reverse
 from django.utils.encoding import smart_str, force_str, smart_bytes, DjangoUnicodeDecodeError
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
-from rest_framework import status
+from rest_framework import status, serializers
 from rest_framework.generics import GenericAPIView
 from rest_framework.response import Response
 
@@ -62,7 +62,7 @@ class RequestPasswordResetEmail(GenericAPIView):
         )
 
 
-class PasswordTokenCheckAPI(GenericAPIView):
+class PasswordTokenCheck(GenericAPIView):
     serializer_class = SetNewPasswordSerializer
 
     def get(self, request, uidb64, token):
@@ -73,23 +73,19 @@ class PasswordTokenCheckAPI(GenericAPIView):
             user = CustomUser.objects.get(uid=uid)
             if not PasswordResetTokenGenerator().check_token(user, token):
                 if redirect_url != "":
-                    print("redirect without token", redirect_url)
                     return CustomRedirect(
                         f"{redirect_url}/?token_valid=False"
                     )
                 else:
-                    print("frontend WITHOUT TOKEN >", FRONTEND_URL)
                     return CustomRedirect(
                         f"{FRONTEND_URL}/?token_valid=False"
                     )
 
             if redirect_url != "":
-                print("redirect with token", redirect_url)
                 return CustomRedirect(
                     f"{redirect_url}/?token_valid=True&message=valid&uidb64={uidb64}&token={token}"
                 )
             else:
-                print("frontend WITH TOKEN >", FRONTEND_URL)
                 return CustomRedirect(
                     f"{FRONTEND_URL}/?token_valid=False"
                 )
@@ -99,4 +95,19 @@ class PasswordTokenCheckAPI(GenericAPIView):
             
         return Response({
             "error": "Token is invalid. Please reset your password again to request a new one"
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+
+class SetNewPassword(GenericAPIView):
+    serializer_class = SetNewPasswordSerializer
+
+    def patch(self, request):
+        serializer = self.serializer_class(data=request.data)
+        try:
+            serializer.is_valid(raise_exception=True)
+            return Response({"success": True, "message": "Password has been reset."}, status=status.HTTP_200_OK)
+        except ValidationError:
+            return Response({
+            "success": False,
+            "message": "Password or token is invalid. Please reset your password again to request a new one"
             }, status=status.HTTP_400_BAD_REQUEST)

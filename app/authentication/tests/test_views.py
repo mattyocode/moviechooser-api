@@ -2,6 +2,7 @@ import os
 from unittest.mock import patch
 
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
+from django.core.exceptions import ValidationError
 from django.test import TestCase, Client
 from django.utils.encoding import smart_str, force_str, smart_bytes
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
@@ -125,3 +126,42 @@ def test_invalid_user_uidb64_returns_400_error(client):
     )
     assert resp.status_code == 400
     assert "Token is invalid" in resp.data["error"]
+
+
+@pytest.mark.django_db
+def test_set_new_password_valid_data(client):
+    user = CustomUser.objects.create_user(email="standard@user.com", password="testpw")
+    with patch("authentication.views.SetNewPasswordSerializer.is_valid") as mock_set_pw_serializer:
+        mock_set_pw_serializer.return_value = user
+        resp = client.patch(
+            "/auth/password-reset-complete/",
+            data={
+                "password": "standard@user.com",
+                "uidb64": "c2cf96e3-172e-4571-bb1a-71ed0f5ce037",
+                "token": "faketn-4a85d1ec5dcbed69570c1b9721b3acca",
+            },
+            content_type='application/json'
+        )
+        assert resp.status_code == 200
+        assert resp.data["success"] == True
+        assert "Password has been reset" in resp.data["message"]
+
+
+@pytest.mark.django_db
+def test_set_new_password_invalid_data(client):
+    user = CustomUser.objects.create_user(email="standard@user.com", password="testpw")
+    with patch("authentication.views.SetNewPasswordSerializer.is_valid") as mock_set_pw_serializer:
+        mock_set_pw_serializer.side_effect = ValidationError("Reset link is invalid")
+        resp = client.patch(
+            "/auth/password-reset-complete/",
+            data={
+                "password": "standard@user.com",
+                "uidb64": "c2cf96e3-172e-4571-bb1a-71ed0f5ce037",
+                "token": "faketn-4a85d1ec5dcbed69570c1b9721b3acca",
+            },
+            content_type='application/json'
+        )
+        print(resp.__dict__)
+        assert resp.status_code == 400
+        assert resp.data["success"] == False
+        assert "Password or token is invalid" in resp.data["message"]

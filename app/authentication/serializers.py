@@ -67,6 +67,11 @@ class SetNewPasswordSerializer(serializers.Serializer):
 
     class Meta:
         fields = ["password", "token", "uidb64"]
+        extra_kwargs = {
+            "password": {"error_messages": {"password": "This field is required."}},
+            "token": {"error_messages": {"token": "This field is required."}},
+            "uidb64": {"error_messages": {"uidb64": "This field is required."}},
+            }
 
     def validate(self, attrs):
         try:
@@ -77,11 +82,12 @@ class SetNewPasswordSerializer(serializers.Serializer):
             uid = force_str(urlsafe_base64_decode(uidb64))
             user = CustomUser.objects.get(uid=uid)
             if not PasswordResetTokenGenerator().check_token(user, token):
-                raise AuthenticationFailed("Reset link is invalid.", 401)
+                raise serializers.ValidationError("Reset link is invalid.")
 
+            
             user.set_password(password)
             user.save()
             return user
         
-        except Exception as e:
-            raise AuthenticationFailed("Reset link is invalid", 401)
+        except Exception:
+            raise serializers.ValidationError("Reset link is invalid")
