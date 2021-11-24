@@ -1,5 +1,6 @@
 import os
 
+from django.core.exceptions import ValidationError
 from rest_framework import status
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
@@ -12,7 +13,7 @@ from rest_framework_simplejwt.views import (
     TokenRefreshView,
 )
 
-from .serializers import LoginSerializer, RegisterSerializer
+from .serializers import LoginSerializer, RegisterSerializer, SetNewPasswordSerializer
 from .utils import recaptcha_submit
 
 DEBUG = os.environ.get("DEBUG", 0)

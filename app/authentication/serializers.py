@@ -48,10 +48,11 @@ class LoginSerializer(TokenObtainPairSerializer):
 
 class ResetPasswordEmailSerializer(serializers.Serializer):
     email = serializers.EmailField(max_length=500)
+    recaptcha_key = serializers.CharField(required=True)
     redirect_url = serializers.CharField(max_length=1000, required=False)
 
     class Meta:
-        fields = ["email"]
+        fields = ["email", "recaptcha_key"]
 
 
 class SetNewPasswordSerializer(serializers.Serializer):

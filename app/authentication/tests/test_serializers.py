@@ -123,6 +123,7 @@ def test_cant_register_existing_username():
 def test_valid_password_reset_serializer():
     valid_serializer_data = {
         "email": "standard@user.com",
+        "recaptcha_key": "testkey12341234",
     }
     serializer = ResetPasswordEmailSerializer(data=valid_serializer_data)
     assert serializer.is_valid()
@@ -132,7 +133,9 @@ def test_valid_password_reset_serializer():
 
 @pytest.mark.django_db
 def test_invalid_password_reset_serializer():
-    invalid_serializer_data = {}
+    invalid_serializer_data = {
+        "recaptcha_key": "testkey12341234",
+    }
     serializer = ResetPasswordEmailSerializer(data=invalid_serializer_data)
     assert not serializer.is_valid()
     assert serializer.validated_data == {}

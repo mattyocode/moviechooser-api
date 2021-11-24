@@ -1,3 +1,4 @@
+import json
 import os
 from unittest.mock import patch
 
@@ -14,32 +15,59 @@ FRONTEND_URL = os.environ.get("FRONTEND_URL", "")
 
 
 @pytest.mark.django_db
-def test_send_pw_reset_email_user_exists(client):
+def test_send_pw_reset_email_user_exists(client, mock_recaptcha_submit):
     CustomUser.objects.create_user(email="standard@user.com", password="testpw")
     with patch("authentication.views.send_mail") as mock_send_mail:
         resp = client.post(
-            "/auth/request-reset-email/", data={"email": "standard@user.com"}
+            "/auth/request-reset-email/",
+            data={
+                "email": "standard@user.com",
+                "recaptcha_key": "testkey12341234",
+            }
         )
         assert resp.status_code == 200
         assert resp.data["success"] == "Reset password email sent if account exists"
         args = mock_send_mail.call_args.kwargs
         assert "Reset your password" in str(args)
         assert "standard@user.com" in args["recipient_list"][0]
+        assert mock_recaptcha_submit.called_once()
 
 
 @pytest.mark.django_db
-def test_dont_send_pw_reset_email_user_doesnt_exist(client):
+def test_dont_send_pw_reset_email_user_doesnt_exist(client, mock_recaptcha_submit):
     """
     It returns success message but no email is sent.
     """
     CustomUser.objects.create_user(email="standard@user.com", password="testpw")
     with patch("authentication.views.send_mail") as mock_send_mail:
         resp = client.post(
-            "/auth/request-reset-email/", data={"email": "another@user.com"}
+            "/auth/request-reset-email/",
+            data={
+                "email": "other@user.com",
+                "recaptcha_key": "testkey12341234",
+            }
         )
         assert resp.status_code == 200
         assert resp.data["success"] == "Reset password email sent if account exists"
         assert mock_send_mail.call_count == 0
+        assert mock_recaptcha_submit.called_once()
+
+
+@pytest.mark.django_db
+def test_dont_send_pw_reset_email_bad_recaptcha(client, mock_recaptcha_fail):
+    CustomUser.objects.create_user(email="standard@user.com", password="testpw")
+    with patch("authentication.views.send_mail") as mock_send_mail:
+        resp = client.post(
+            "/auth/request-reset-email/",
+            data={
+                "email": "standard@user.com",
+                "recaptcha_key": "testkey12341234",
+            }
+        )
+        assert resp.status_code == 200
+        assert resp.data["success"] == "Reset password email sent if account exists"
+        assert mock_send_mail.call_count == 0
+        assert mock_recaptcha_fail.called_once()
 
 
 @pytest.mark.django_db
@@ -134,7 +162,7 @@ def test_set_new_password_valid_data(client):
     with patch("authentication.views.SetNewPasswordSerializer.is_valid") as mock_set_pw_serializer:
         mock_set_pw_serializer.return_value = user
         resp = client.patch(
-            "/auth/password-reset-complete/",
+            "/auth/set-new-password/",
             data={
                 "password": "standard@user.com",
                 "uidb64": "c2cf96e3-172e-4571-bb1a-71ed0f5ce037",
@@ -153,7 +181,7 @@ def test_set_new_password_invalid_data(client):
     with patch("authentication.views.SetNewPasswordSerializer.is_valid") as mock_set_pw_serializer:
         mock_set_pw_serializer.side_effect = ValidationError("Reset link is invalid")
         resp = client.patch(
-            "/auth/password-reset-complete/",
+            "/auth/set-new-password/",
             data={
                 "password": "standard@user.com",
                 "uidb64": "c2cf96e3-172e-4571-bb1a-71ed0f5ce037",
@@ -161,7 +189,6 @@ def test_set_new_password_invalid_data(client):
             },
             content_type='application/json'
         )
-        print(resp.__dict__)
         assert resp.status_code == 400
         assert resp.data["success"] == False
         assert "Password or token is invalid" in resp.data["message"]

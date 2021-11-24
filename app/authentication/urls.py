@@ -24,7 +24,7 @@ urlpatterns += [
         name="password-reset-confirm",
     ),
     path(
-        'password-reset-complete/',
+        'set-new-password/',
         SetNewPassword.as_view(),
-        name='password-reset-complete')
+        name='set-new-password')
 ]

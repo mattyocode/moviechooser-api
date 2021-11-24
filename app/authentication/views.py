@@ -8,12 +8,13 @@ from django.http import HttpResponsePermanentRedirect
 from django.urls import reverse
 from django.utils.encoding import smart_str, force_str, smart_bytes, DjangoUnicodeDecodeError
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
-from rest_framework import status, serializers
+from rest_framework import status
 from rest_framework.generics import GenericAPIView
 from rest_framework.response import Response
 
 from accounts.models import CustomUser
 from .serializers import ResetPasswordEmailSerializer, SetNewPasswordSerializer
+from .utils import recaptcha_submit
 
 DEBUG = os.environ.get("DEBUG", 0)
 FRONTEND_URL = os.environ.get("FRONTEND_URL", "")
@@ -28,10 +29,14 @@ class RequestPasswordResetEmail(GenericAPIView):
     serializer_class = ResetPasswordEmailSerializer
 
     def post(self, request):
-        # serializer = self.serializer_class(data=request.data)
+        serializer = self.serializer_class(data=request.data)
+        serializer.is_valid(raise_exception=True)
         email = request.data.get("email", "")
+        is_valid_recaptcha = recaptcha_submit(
+            serializer.validated_data["recaptcha_key"]
+        )
 
-        if CustomUser.objects.filter(email=email).exists():
+        if CustomUser.objects.filter(email=email).exists() and is_valid_recaptcha:
             user = CustomUser.objects.get(email=email)
             uidb64 = urlsafe_base64_encode(smart_bytes(user.uid))
             token = PasswordResetTokenGenerator().make_token(user)
