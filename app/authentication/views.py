@@ -62,14 +62,17 @@ class RequestPasswordResetEmail(GenericAPIView):
 
             email_body = f"Hi movie fan,\n\nUse the following link to reset your password:\
                     \n\n{abs_url}?redirect_url={redirect_url}"
-            print("before send mail >>", email)
-            send_mail(
-                subject="Reset your password",
-                message=email_body,
-                from_email="noreply@moviechooser.co.uk",
-                recipient_list=[f"{user.email}"],
-            )
-            print("after send mail >>", email)
+            print("before send mail >>", user.email)
+            try:
+                send_mail(
+                    subject="Reset your password",
+                    message=email_body,
+                    from_email="noreply@moviechooser.co.uk",
+                    recipient_list=[f"{user.email}"],
+                )
+            except Exception as e:
+                print("send_mail exception >>", e)
+            print("after send mail >>", user.email)
         return Response(
             {"success": "Reset password email sent if account exists"},
             status=status.HTTP_200_OK,
