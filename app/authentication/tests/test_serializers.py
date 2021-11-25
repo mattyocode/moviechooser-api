@@ -173,7 +173,9 @@ def test_invalid_set_new_password_short_password():
     assert serializer.validated_data == {}
     assert serializer.data == invalid_serializer_data
     assert "password" in json.dumps(serializer.errors)
-    assert "Ensure this field has at least 8 characters." in json.dumps(serializer.errors)
+    assert "Ensure this field has at least 8 characters." in json.dumps(
+        serializer.errors
+    )
 
 
 @pytest.mark.django_db
