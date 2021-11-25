@@ -42,6 +42,8 @@ class RequestPasswordResetEmail(GenericAPIView):
         )
 
         print("reset request sent by >>>", email)
+        print("valid recaptcha? >>", is_valid_recaptcha)
+        print("user exists? >>", CustomUser.objects.filter(email=email).exists())
 
         if CustomUser.objects.filter(email=email).exists() and is_valid_recaptcha:
             user = CustomUser.objects.get(email=email)
