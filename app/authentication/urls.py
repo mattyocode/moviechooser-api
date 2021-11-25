@@ -1,7 +1,11 @@
 from django.urls import path
 from rest_framework.routers import SimpleRouter
 
-from .views import PasswordTokenCheck, RequestPasswordResetEmail, SetNewPassword
+from .views import (
+    PasswordTokenCheck,
+    RequestPasswordResetEmail,
+    SetNewPassword,
+)
 from .viewsets import LoginViewSet, RefreshViewSet, RegisterViewSet
 
 routes = SimpleRouter()
@@ -23,8 +27,5 @@ urlpatterns += [
         PasswordTokenCheck.as_view(),
         name="password-reset-confirm",
     ),
-    path(
-        'set-new-password/',
-        SetNewPassword.as_view(),
-        name='set-new-password')
+    path("set-new-password/", SetNewPassword.as_view(), name="set-new-password"),
 ]

@@ -1,13 +1,11 @@
-import json
 import os
 from unittest.mock import patch
 
+import pytest
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.core.exceptions import ValidationError
-from django.test import TestCase, Client
-from django.utils.encoding import smart_str, force_str, smart_bytes
-from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
-import pytest
+from django.utils.encoding import smart_bytes
+from django.utils.http import urlsafe_base64_encode
 
 from accounts.models import CustomUser
 
@@ -23,7 +21,7 @@ def test_send_pw_reset_email_user_exists(client, mock_recaptcha_submit):
             data={
                 "email": "standard@user.com",
                 "recaptcha_key": "testkey12341234",
-            }
+            },
         )
         assert resp.status_code == 200
         assert resp.data["success"] == "Reset password email sent if account exists"
@@ -45,7 +43,7 @@ def test_dont_send_pw_reset_email_user_doesnt_exist(client, mock_recaptcha_submi
             data={
                 "email": "other@user.com",
                 "recaptcha_key": "testkey12341234",
-            }
+            },
         )
         assert resp.status_code == 200
         assert resp.data["success"] == "Reset password email sent if account exists"
@@ -62,7 +60,7 @@ def test_dont_send_pw_reset_email_bad_recaptcha(client, mock_recaptcha_fail):
             data={
                 "email": "standard@user.com",
                 "recaptcha_key": "testkey12341234",
-            }
+            },
         )
         assert resp.status_code == 200
         assert resp.data["success"] == "Reset password email sent if account exists"
@@ -78,13 +76,13 @@ def test_valid_token_check_with_redirect(client):
     redirect_url = "http://localhost"
     resp = client.get(
         f"/auth/password-reset-confirm/{uidb64}/{token}/?redirect_url={redirect_url}",
-        follow=True
+        follow=True,
     )
     print("redirect chain", resp.redirect_chain)
     assert token in resp.redirect_chain[-1][0]
     assert uidb64 in resp.redirect_chain[-1][0]
     assert redirect_url in resp.redirect_chain[-1][0]
-    assert 'token_valid=True' in resp.redirect_chain[-1][0]
+    assert "token_valid=True" in resp.redirect_chain[-1][0]
     assert 301 == resp.redirect_chain[-1][1]
 
 
@@ -96,13 +94,13 @@ def test_valid_token_check_without_redirect(client):
     redirect_url = ""
     resp = client.get(
         f"/auth/password-reset-confirm/{uidb64}/{token}/?redirect_url={redirect_url}",
-        follow=True
+        follow=True,
     )
     print("redirect chain", resp.redirect_chain)
     assert token not in resp.redirect_chain[-1][0]
     assert uidb64 not in resp.redirect_chain[-1][0]
     assert FRONTEND_URL in resp.redirect_chain[-1][0]
-    assert 'token_valid=False' in resp.redirect_chain[-1][0]
+    assert "token_valid=False" in resp.redirect_chain[-1][0]
     assert 301 == resp.redirect_chain[-1][1]
 
 
@@ -114,12 +112,12 @@ def test_invalid_token_check_with_redirect(client):
     redirect_url = "http://localhost"
     resp = client.get(
         f"/auth/password-reset-confirm/{uidb64}/{bad_token}/?redirect_url={redirect_url}",
-        follow=True
+        follow=True,
     )
     assert uidb64 not in resp.redirect_chain[-1][0]
     assert bad_token not in resp.redirect_chain[-1][0]
     assert redirect_url in resp.redirect_chain[-1][0]
-    assert 'token_valid=False' in resp.redirect_chain[-1][0]
+    assert "token_valid=False" in resp.redirect_chain[-1][0]
     assert 301 == resp.redirect_chain[-1][1]
 
 
@@ -131,26 +129,25 @@ def test_invalid_token_check_without_redirect(client):
     redirect_url = ""
     resp = client.get(
         f"/auth/password-reset-confirm/{uidb64}/{bad_token}/?redirect_url={redirect_url}",
-        follow=True
+        follow=True,
     )
     assert uidb64 not in resp.redirect_chain[-1][0]
     assert bad_token not in resp.redirect_chain[-1][0]
     assert FRONTEND_URL in resp.redirect_chain[-1][0]
-    assert 'token_valid=False' in resp.redirect_chain[-1][0]
+    assert "token_valid=False" in resp.redirect_chain[-1][0]
     assert 301 == resp.redirect_chain[-1][1]
 
 
 @pytest.mark.django_db
 def test_invalid_user_uidb64_returns_400_error(client):
-    user = CustomUser.objects.create_user(email="standard@user.com", password="testpw")
+    CustomUser.objects.create_user(email="standard@user.com", password="testpw")
     fake_user_uid = "c2cf96e3-172e-4571-bb1a-71ed0f5ce037"
     uidb64 = urlsafe_base64_encode(smart_bytes(fake_user_uid))
-    # token = PasswordResetTokenGenerator().make_token(user)
     bad_token = "faketn-4a85d1ec5dcbed69570c1b9721b3acca"
     redirect_url = ""
     resp = client.get(
         f"/auth/password-reset-confirm/{uidb64}/{bad_token}/?redirect_url={redirect_url}",
-        follow=True
+        follow=True,
     )
     assert resp.status_code == 400
     assert "Token is invalid" in resp.data["error"]
@@ -159,7 +156,9 @@ def test_invalid_user_uidb64_returns_400_error(client):
 @pytest.mark.django_db
 def test_set_new_password_valid_data(client):
     user = CustomUser.objects.create_user(email="standard@user.com", password="testpw")
-    with patch("authentication.views.SetNewPasswordSerializer.is_valid") as mock_set_pw_serializer:
+    with patch(
+        "authentication.views.SetNewPasswordSerializer.is_valid"
+    ) as mock_set_pw_serializer:
         mock_set_pw_serializer.return_value = user
         resp = client.patch(
             "/auth/set-new-password/",
@@ -168,17 +167,19 @@ def test_set_new_password_valid_data(client):
                 "uidb64": "c2cf96e3-172e-4571-bb1a-71ed0f5ce037",
                 "token": "faketn-4a85d1ec5dcbed69570c1b9721b3acca",
             },
-            content_type='application/json'
+            content_type="application/json",
         )
         assert resp.status_code == 200
-        assert resp.data["success"] == True
+        assert resp.data["success"] is True
         assert "Password has been reset" in resp.data["message"]
 
 
 @pytest.mark.django_db
 def test_set_new_password_invalid_data(client):
-    user = CustomUser.objects.create_user(email="standard@user.com", password="testpw")
-    with patch("authentication.views.SetNewPasswordSerializer.is_valid") as mock_set_pw_serializer:
+    CustomUser.objects.create_user(email="standard@user.com", password="testpw")
+    with patch(
+        "authentication.views.SetNewPasswordSerializer.is_valid"
+    ) as mock_set_pw_serializer:
         mock_set_pw_serializer.side_effect = ValidationError("Reset link is invalid")
         resp = client.patch(
             "/auth/set-new-password/",
@@ -187,8 +188,8 @@ def test_set_new_password_invalid_data(client):
                 "uidb64": "c2cf96e3-172e-4571-bb1a-71ed0f5ce037",
                 "token": "faketn-4a85d1ec5dcbed69570c1b9721b3acca",
             },
-            content_type='application/json'
+            content_type="application/json",
         )
         assert resp.status_code == 400
-        assert resp.data["success"] == False
+        assert resp.data["success"] is False
         assert "Password or token is invalid" in resp.data["message"]

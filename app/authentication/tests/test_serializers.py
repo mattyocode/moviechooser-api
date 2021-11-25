@@ -1,10 +1,9 @@
 import json
 
+import pytest
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
-from rest_framework_simplejwt.exceptions import AuthenticationFailed
 from django.utils.encoding import smart_bytes
 from django.utils.http import urlsafe_base64_encode
-import pytest
 
 from accounts.models import CustomUser
 from authentication.serializers import (
@@ -172,9 +171,9 @@ def test_invalid_set_new_password_short_password():
     serializer = SetNewPasswordSerializer(data=invalid_serializer_data)
     assert not serializer.is_valid()
     assert serializer.validated_data == {}
-    # del invalid_serializer_data["recaptcha_key"]
     assert serializer.data == invalid_serializer_data
-    assert json.dumps(serializer.errors) == '{"password": ["Ensure this field has at least 8 characters."]}'
+    assert "password" in json.dumps(serializer.errors)
+    assert "Ensure this field has at least 8 characters." in json.dumps(serializer.errors)
 
 
 @pytest.mark.django_db
@@ -191,9 +190,9 @@ def test_set_new_password_bad_uidb64():
     serializer = SetNewPasswordSerializer(data=invalid_serializer_data)
     assert not serializer.is_valid()
     assert serializer.validated_data == {}
-    # del invalid_serializer_data["recaptcha_key"]
     assert serializer.data == invalid_serializer_data
-    assert json.dumps(serializer.errors) == '{"non_field_errors": ["Reset link is invalid"]}'
+    assert "non_field_errors" in json.dumps(serializer.errors)
+    assert "Reset link is invalid" in json.dumps(serializer.errors)
 
 
 @pytest.mark.django_db
@@ -209,6 +208,6 @@ def test_set_new_password_bad_token():
     serializer = SetNewPasswordSerializer(data=invalid_serializer_data)
     assert not serializer.is_valid()
     assert serializer.validated_data == {}
-    # del invalid_serializer_data["recaptcha_key"]
     assert serializer.data == invalid_serializer_data
-    assert json.dumps(serializer.errors) == '{"non_field_errors": ["Reset link is invalid"]}'
+    assert "non_field_errors" in json.dumps(serializer.errors)
+    assert "Reset link is invalid" in json.dumps(serializer.errors)

@@ -1,6 +1,5 @@
 import os
 
-from django.core.exceptions import ValidationError
 from rest_framework import status
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
@@ -13,7 +12,10 @@ from rest_framework_simplejwt.views import (
     TokenRefreshView,
 )
 
-from .serializers import LoginSerializer, RegisterSerializer, SetNewPasswordSerializer
+from .serializers import (
+    LoginSerializer,
+    RegisterSerializer,
+)
 from .utils import recaptcha_submit
 
 DEBUG = os.environ.get("DEBUG", 0)
@@ -47,7 +49,7 @@ class RegisterViewSet(ModelViewSet, TokenObtainPairView):
         is_valid_recaptcha = recaptcha_submit(
             serializer.validated_data["recaptcha_key"]
         )
-        
+
         # if DEBUG:
         #     is_valid_recaptcha = True
 
@@ -62,6 +64,7 @@ class RegisterViewSet(ModelViewSet, TokenObtainPairView):
                 pass
 
             user = serializer.save()
+            user.is_active = True
             user_data["uid"] = str(user.uid)
             user_data["is_active"] = user.is_active
 

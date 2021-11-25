@@ -2,17 +2,22 @@ import os
 
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.contrib.sites.shortcuts import get_current_site
-from django.core.mail import send_mail
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
+from django.core.mail import send_mail
 from django.http import HttpResponsePermanentRedirect
 from django.urls import reverse
-from django.utils.encoding import smart_str, force_str, smart_bytes, DjangoUnicodeDecodeError
+from django.utils.encoding import (
+    DjangoUnicodeDecodeError,
+    smart_bytes,
+    smart_str,
+)
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 from rest_framework import status
 from rest_framework.generics import GenericAPIView
 from rest_framework.response import Response
 
 from accounts.models import CustomUser
+
 from .serializers import ResetPasswordEmailSerializer, SetNewPasswordSerializer
 from .utils import recaptcha_submit
 
@@ -22,7 +27,7 @@ FRONTEND_URL = os.environ.get("FRONTEND_URL", "")
 
 class CustomRedirect(HttpResponsePermanentRedirect):
     print("custom redirect")
-    allowed_schemes = [os.environ.get('DEBUG'), 'https', 'http']
+    allowed_schemes = [os.environ.get("DEBUG"), "https", "http"]
 
 
 class RequestPasswordResetEmail(GenericAPIView):
@@ -52,8 +57,8 @@ class RequestPasswordResetEmail(GenericAPIView):
             redirect_url = request.data.get("redirect_url", "")
 
             email_body = (
-                f"Hi movie fan, \n Use the following link to reset your password: \n\
-                {abs_url}?redirect_url={redirect_url}"
+                f"Hi movie fan,\n\nUse the following link to reset your password:\
+                    \n\n{abs_url}?redirect_url={redirect_url}"
             )
             send_mail(
                 subject="Reset your password",
@@ -78,29 +83,26 @@ class PasswordTokenCheck(GenericAPIView):
             user = CustomUser.objects.get(uid=uid)
             if not PasswordResetTokenGenerator().check_token(user, token):
                 if redirect_url != "":
-                    return CustomRedirect(
-                        f"{redirect_url}/?token_valid=False"
-                    )
+                    return CustomRedirect(f"{redirect_url}/?token_valid=False")
                 else:
-                    return CustomRedirect(
-                        f"{FRONTEND_URL}/?token_valid=False"
-                    )
+                    return CustomRedirect(f"{FRONTEND_URL}/?token_valid=False")
 
             if redirect_url != "":
                 return CustomRedirect(
                     f"{redirect_url}/?token_valid=True&message=valid&uidb64={uidb64}&token={token}"
                 )
             else:
-                return CustomRedirect(
-                    f"{FRONTEND_URL}/?token_valid=False"
-                )
+                return CustomRedirect(f"{FRONTEND_URL}/?token_valid=False")
 
-        except (DjangoUnicodeDecodeError, ObjectDoesNotExist) as err:
+        except (DjangoUnicodeDecodeError, ObjectDoesNotExist):
             pass
-            
-        return Response({
-            "error": "Token is invalid. Please reset your password again to request a new one"
-            }, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(
+            {
+                "error": "Token is invalid. Please reset your password again to request a new one"
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
 
 
 class SetNewPassword(GenericAPIView):
@@ -110,9 +112,15 @@ class SetNewPassword(GenericAPIView):
         serializer = self.serializer_class(data=request.data)
         try:
             serializer.is_valid(raise_exception=True)
-            return Response({"success": True, "message": "Password has been reset."}, status=status.HTTP_200_OK)
+            return Response(
+                {"success": True, "message": "Password has been reset."},
+                status=status.HTTP_200_OK,
+            )
         except ValidationError:
-            return Response({
-            "success": False,
-            "message": "Password or token is invalid. Please reset your password again to request a new one"
-            }, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {
+                    "success": False,
+                    "message": "Password or token is invalid. Please reset your password again to request a new one",
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
