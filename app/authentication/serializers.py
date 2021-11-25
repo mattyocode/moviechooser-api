@@ -1,4 +1,7 @@
 from django.contrib.auth.models import update_last_login
+from django.contrib.auth.tokens import PasswordResetTokenGenerator
+from django.utils.encoding import force_str
+from django.utils.http import urlsafe_base64_decode
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework_simplejwt.settings import api_settings
@@ -40,3 +43,46 @@ class LoginSerializer(TokenObtainPairSerializer):
             update_last_login(None, self.user)
 
         return data
+
+
+class ResetPasswordEmailSerializer(serializers.Serializer):
+    email = serializers.EmailField(max_length=500)
+    recaptcha_key = serializers.CharField(required=True)
+    redirect_url = serializers.CharField(max_length=1000, required=False)
+
+    class Meta:
+        fields = ["email", "recaptcha_key"]
+
+
+class SetNewPasswordSerializer(serializers.Serializer):
+    password = serializers.CharField(
+        max_length=128, min_length=8, write_only=True, required=True
+    )
+    token = serializers.CharField(required=True, write_only=True)
+    uidb64 = serializers.CharField(required=True, write_only=True)
+
+    class Meta:
+        fields = ["password", "token", "uidb64"]
+        extra_kwargs = {
+            "password": {"error_messages": {"password": "This field is required."}},
+            "token": {"error_messages": {"token": "This field is required."}},
+            "uidb64": {"error_messages": {"uidb64": "This field is required."}},
+        }
+
+    def validate(self, attrs):
+        try:
+            password = attrs.get("password")
+            token = attrs.get("token")
+            uidb64 = attrs.get("uidb64")
+
+            uid = force_str(urlsafe_base64_decode(uidb64))
+            user = CustomUser.objects.get(uid=uid)
+            if not PasswordResetTokenGenerator().check_token(user, token):
+                raise serializers.ValidationError("Reset link is invalid.")
+
+            user.set_password(password)
+            user.save()
+            return user
+
+        except Exception:
+            raise serializers.ValidationError("Reset link is invalid")
