@@ -12,10 +12,7 @@ from rest_framework_simplejwt.views import (
     TokenRefreshView,
 )
 
-from .serializers import (
-    LoginSerializer,
-    RegisterSerializer,
-)
+from .serializers import LoginSerializer, RegisterSerializer
 from .utils import recaptcha_submit
 
 DEBUG = os.environ.get("DEBUG", 0)
