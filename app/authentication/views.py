@@ -3,7 +3,6 @@ import os
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.contrib.sites.shortcuts import get_current_site
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
-from django.core.mail import send_mail
 from django.http import HttpResponsePermanentRedirect
 from django.urls import reverse
 from django.utils.encoding import (
@@ -19,7 +18,7 @@ from rest_framework.response import Response
 from accounts.models import CustomUser
 
 from .serializers import ResetPasswordEmailSerializer, SetNewPasswordSerializer
-from .utils import recaptcha_submit
+from .utils import recaptcha_submit, send_email
 
 DEBUG = os.environ.get("DEBUG", 0)
 FRONTEND_URL = os.environ.get("FRONTEND_URL", "")
@@ -64,10 +63,10 @@ class RequestPasswordResetEmail(GenericAPIView):
                     \n\n{abs_url}?redirect_url={redirect_url}"
             print("before send mail >>", user.email)
             try:
-                send_mail(
+                send_email(
                     subject="Reset your password",
                     message=email_body,
-                    from_email="noreply@moviechooser.co.uk",
+                    sender="noreply@moviechooser.co.uk",
                     recipient_list=[f"{user.email}"],
                 )
             except Exception as e:
