@@ -41,6 +41,7 @@ class EmailThread(threading.Thread):
 
 
 def send_email(subject, message, sender, recipient_list):
-    EmailThread(subject, message, sender, recipient_list).start()
+    emailthread = EmailThread(subject, message, sender, recipient_list)
+    emailthread.start()
     time.sleep(5.0)
-    EmailThread.join()
+    emailthread.join()
