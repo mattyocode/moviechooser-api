@@ -49,6 +49,7 @@ INSTALLED_APPS = [
     "movies",
     "accounts",
     "authentication",
+    "lists",
     "corsheaders",
 ]
 
