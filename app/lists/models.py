@@ -8,7 +8,7 @@ from movies.models import Movie
 
 class List(models.Model):
     owner = models.ForeignKey(
-        CustomUser, on_delete=models.CASCADE, related_name="owner"
+        CustomUser, on_delete=models.CASCADE, related_name="list"
     )
     name = models.CharField(max_length=32)
     added = models.DateTimeField(auto_now_add=True)
@@ -20,10 +20,10 @@ class List(models.Model):
 
 class Item(models.Model):
     _list = models.ForeignKey(
-        List, on_delete=models.CASCADE, related_name="list"
+        List, on_delete=models.CASCADE, related_name="list_item"
     )
     movie = models.ForeignKey(
-        Movie, on_delete=models.CASCADE, related_name="movie"
+        Movie, on_delete=models.CASCADE, related_name="movie_item"
     )
     watched = models.BooleanField(default=False)
     added = models.DateTimeField(auto_now_add=True)
