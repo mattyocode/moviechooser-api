@@ -262,8 +262,136 @@ def test_delete_single_list_item(auth_user_client):
 
 
 @pytest.mark.django_db
+def test_delete_single_list_item_not_authorized(client):
+    user = CustomUser.objects.create_user(email="standard@user.com", password="testpw")
+    movie = MovieFactory(
+        imdbid="test0987",
+        title="Tester",
+    )
+    _list = List.objects.create(
+        owner=user,
+        name=DEFAULT_LIST
+    )
+    item = Item.objects.create(
+        _list=_list,
+        movie=movie,
+    )
+    resp = client.delete(f"/list/{item.uid}/")
+    assert resp.status_code == 401
+    assert resp.data["detail"] == "Authentication credentials were not provided."
+
+
+@pytest.mark.django_db
 def test_delete_single_list_item_unknown_uid(auth_user_client):
     fake_user_uid = "c2cf96e3-172e-4571-bb1a-71ed0f5ce037"
     resp = auth_user_client.delete(f"/list/{fake_user_uid}/")
     assert resp.status_code == 404
     assert resp.data["detail"] == "Not found."
+
+
+@pytest.mark.django_db
+def test_update_single_list_item(auth_user_client):
+    user = CustomUser.objects.get(email="fixture@user.com")
+    movie = MovieFactory(
+        imdbid="test0987",
+        title="Tester",
+    )
+    _list = List.objects.create(
+        owner=user,
+        name=DEFAULT_LIST
+    )
+    item = Item.objects.create(
+        _list=_list,
+        movie=movie,
+    )
+    resp = auth_user_client.get(f"/list/{item.uid}/")
+    assert resp.status_code == 200
+    assert resp.data["movie"]["title"] == "Tester"
+    assert resp.data["watched"] == False
+
+    data = json.dumps({"watched": True})
+
+    resp_two = auth_user_client.patch(
+        f"/list/{item.uid}/",
+        data,
+        content_type="application/json"
+    )
+    assert resp_two.status_code == 204
+
+    resp_three = auth_user_client.get(f"/list/{item.uid}/")
+    assert resp_three.status_code == 200
+    assert resp_three.data["movie"]["title"] == "Tester"
+    assert resp_three.data["watched"] == True
+
+
+@pytest.mark.django_db
+def test_update_single_list_item_invalid_json_keys(auth_user_client):
+    user = CustomUser.objects.get(email="fixture@user.com")
+    movie = MovieFactory(
+        imdbid="test0987",
+        title="Tester",
+    )
+    _list = List.objects.create(
+        owner=user,
+        name=DEFAULT_LIST
+    )
+    item = Item.objects.create(
+        _list=_list,
+        movie=movie,
+    )
+    resp = auth_user_client.get(f"/list/{item.uid}/")
+    assert resp.status_code == 200
+    assert resp.data["movie"]["title"] == "Tester"
+    assert resp.data["watched"] == False
+
+    data = json.dumps({"unknown_field": True})
+
+    resp_two = auth_user_client.patch(
+        f"/list/{item.uid}/",
+        data,
+        content_type="application/json"
+    )
+    assert resp_two.status_code == 204
+
+    resp_three = auth_user_client.get(f"/list/{item.uid}/")
+    assert resp_three.status_code == 200
+    assert resp_three.data["movie"]["title"] == "Tester"
+    assert "unknown_field" not in json.dumps(resp_three.data)
+
+
+@pytest.mark.django_db
+def test_update_single_list_item_unknown_uid(auth_user_client):
+    fake_user_uid = "c2cf96e3-172e-4571-bb1a-71ed0f5ce037"
+    data = json.dumps({"watched": True})
+    resp = auth_user_client.patch(
+        f"/list/{fake_user_uid}/",
+        data,
+        content_type="application/json"
+    )
+    assert resp.status_code == 404
+    assert resp.data["detail"] == "Not found."
+
+
+@pytest.mark.django_db
+def test_update_single_list_item_not_authorized(client):
+    user = CustomUser.objects.create_user(email="standard@user.com", password="testpw")
+    movie = MovieFactory(
+        imdbid="test0987",
+        title="Tester",
+    )
+    _list = List.objects.create(
+        owner=user,
+        name=DEFAULT_LIST
+    )
+    item = Item.objects.create(
+        _list=_list,
+        movie=movie,
+    )
+    data = json.dumps({"watched": True})
+    resp = client.patch(
+        f"/list/{item.uid}/",
+        data,
+        content_type="application/json"
+    )
+    assert resp.status_code == 401
+    assert resp.data["detail"] == "Authentication credentials were not provided."
