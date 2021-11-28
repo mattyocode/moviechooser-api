@@ -1,11 +1,10 @@
 import json
 
 import pytest
-from accounts.models import CustomUser
 
+from accounts.models import CustomUser
 from lists.models import Item, List
 from movies.tests.factories import MovieFactory
-
 
 DEFAULT_LIST = "watch-list"
 
@@ -17,10 +16,7 @@ def test_get_all_list_items(auth_user_client):
         imdbid="test0987",
         title="Tester",
     )
-    _list = List.objects.create(
-        owner=user,
-        name=DEFAULT_LIST
-    )
+    _list = List.objects.create(owner=user, name=DEFAULT_LIST)
     Item.objects.create(
         _list=_list,
         movie=movie,
@@ -47,10 +43,7 @@ def test_get_all_list_items_not_authorized(client):
         imdbid="test0987",
         title="Tester",
     )
-    _list = List.objects.create(
-        owner=user,
-        name=DEFAULT_LIST
-    )
+    _list = List.objects.create(owner=user, name=DEFAULT_LIST)
     Item.objects.create(
         _list=_list,
         movie=movie,
@@ -64,15 +57,14 @@ def test_get_all_list_items_not_authorized(client):
 
 @pytest.mark.django_db
 def test_get_all_list_items_from_authorized_user_only(auth_user_client):
-    other_user = CustomUser.objects.create_user(email="standard@user.com", password="testpw")
+    other_user = CustomUser.objects.create_user(
+        email="standard@user.com", password="testpw"
+    )
     movie = MovieFactory(
         imdbid="test0987",
         title="Tester",
     )
-    _list = List.objects.create(
-        owner=other_user,
-        name=DEFAULT_LIST
-    )
+    _list = List.objects.create(owner=other_user, name=DEFAULT_LIST)
     Item.objects.create(
         _list=_list,
         movie=movie,
@@ -92,14 +84,10 @@ def test_add_list_item(auth_user_client):
         title="Tester",
     )
     data = {
-            "movie_slug": movie.slug,
-        }
+        "movie_slug": movie.slug,
+    }
     data = json.dumps(data)
-    resp = auth_user_client.post(
-        "/list/",
-        data,
-        content_type="application/json"
-    )
+    resp = auth_user_client.post("/list/", data, content_type="application/json")
     assert resp.status_code == 201
 
     items = Item.objects.all()
@@ -119,11 +107,7 @@ def test_add_list_item_unknown_slug(auth_user_client):
         "movie_slug": "totallymadeupslug",
     }
     data = json.dumps(data)
-    resp = auth_user_client.post(
-        "/list/",
-        data,
-        content_type="application/json"
-    )
+    resp = auth_user_client.post("/list/", data, content_type="application/json")
     print("RESP >>", resp.__dict__)
     assert resp.status_code == 400
     assert resp.data["detail"] == "movie does not exist."
@@ -143,11 +127,7 @@ def test_add_list_item_no_slug(auth_user_client):
     )
     data = {}
     data = json.dumps(data)
-    resp = auth_user_client.post(
-        "/list/",
-        data,
-        content_type="application/json"
-    )
+    resp = auth_user_client.post("/list/", data, content_type="application/json")
     print("RESP >>", resp.__dict__)
     assert resp.status_code == 400
     assert "This field is required." in resp.data["movie_slug"]
@@ -169,11 +149,7 @@ def test_add_list_item_user_not_authorized(client):
         "movie_slug": movie.slug,
     }
     data = json.dumps(data)
-    resp = client.post(
-        "/list/",
-        data,
-        content_type="application/json"
-    )
+    resp = client.post("/list/", data, content_type="application/json")
     assert resp.status_code == 401
     assert resp.data["detail"] == "Authentication credentials were not provided."
 
@@ -188,10 +164,7 @@ def test_get_single_list_item(auth_user_client):
         imdbid="test0987",
         title="Tester",
     )
-    _list = List.objects.create(
-        owner=user,
-        name=DEFAULT_LIST
-    )
+    _list = List.objects.create(owner=user, name=DEFAULT_LIST)
     item = Item.objects.create(
         _list=_list,
         movie=movie,
@@ -219,10 +192,7 @@ def test_get_single_list_item_not_authorized(client):
         imdbid="test0987",
         title="Tester",
     )
-    _list = List.objects.create(
-        owner=user,
-        name=DEFAULT_LIST
-    )
+    _list = List.objects.create(owner=user, name=DEFAULT_LIST)
     item = Item.objects.create(
         _list=_list,
         movie=movie,
@@ -239,10 +209,7 @@ def test_delete_single_list_item(auth_user_client):
         imdbid="test0987",
         title="Tester",
     )
-    _list = List.objects.create(
-        owner=user,
-        name=DEFAULT_LIST
-    )
+    _list = List.objects.create(owner=user, name=DEFAULT_LIST)
     item = Item.objects.create(
         _list=_list,
         movie=movie,
@@ -268,10 +235,7 @@ def test_delete_single_list_item_not_authorized(client):
         imdbid="test0987",
         title="Tester",
     )
-    _list = List.objects.create(
-        owner=user,
-        name=DEFAULT_LIST
-    )
+    _list = List.objects.create(owner=user, name=DEFAULT_LIST)
     item = Item.objects.create(
         _list=_list,
         movie=movie,
@@ -296,10 +260,7 @@ def test_update_single_list_item(auth_user_client):
         imdbid="test0987",
         title="Tester",
     )
-    _list = List.objects.create(
-        owner=user,
-        name=DEFAULT_LIST
-    )
+    _list = List.objects.create(owner=user, name=DEFAULT_LIST)
     item = Item.objects.create(
         _list=_list,
         movie=movie,
@@ -307,21 +268,19 @@ def test_update_single_list_item(auth_user_client):
     resp = auth_user_client.get(f"/list/{item.uid}/")
     assert resp.status_code == 200
     assert resp.data["movie"]["title"] == "Tester"
-    assert resp.data["watched"] == False
+    assert resp.data["watched"] is False
 
     data = json.dumps({"watched": True})
 
     resp_two = auth_user_client.patch(
-        f"/list/{item.uid}/",
-        data,
-        content_type="application/json"
+        f"/list/{item.uid}/", data, content_type="application/json"
     )
     assert resp_two.status_code == 204
 
     resp_three = auth_user_client.get(f"/list/{item.uid}/")
     assert resp_three.status_code == 200
     assert resp_three.data["movie"]["title"] == "Tester"
-    assert resp_three.data["watched"] == True
+    assert resp_three.data["watched"] is True
 
 
 @pytest.mark.django_db
@@ -331,10 +290,7 @@ def test_update_single_list_item_invalid_json_keys(auth_user_client):
         imdbid="test0987",
         title="Tester",
     )
-    _list = List.objects.create(
-        owner=user,
-        name=DEFAULT_LIST
-    )
+    _list = List.objects.create(owner=user, name=DEFAULT_LIST)
     item = Item.objects.create(
         _list=_list,
         movie=movie,
@@ -342,14 +298,12 @@ def test_update_single_list_item_invalid_json_keys(auth_user_client):
     resp = auth_user_client.get(f"/list/{item.uid}/")
     assert resp.status_code == 200
     assert resp.data["movie"]["title"] == "Tester"
-    assert resp.data["watched"] == False
+    assert resp.data["watched"] is False
 
     data = json.dumps({"unknown_field": True})
 
     resp_two = auth_user_client.patch(
-        f"/list/{item.uid}/",
-        data,
-        content_type="application/json"
+        f"/list/{item.uid}/", data, content_type="application/json"
     )
     assert resp_two.status_code == 204
 
@@ -364,9 +318,7 @@ def test_update_single_list_item_unknown_uid(auth_user_client):
     fake_user_uid = "c2cf96e3-172e-4571-bb1a-71ed0f5ce037"
     data = json.dumps({"watched": True})
     resp = auth_user_client.patch(
-        f"/list/{fake_user_uid}/",
-        data,
-        content_type="application/json"
+        f"/list/{fake_user_uid}/", data, content_type="application/json"
     )
     assert resp.status_code == 404
     assert resp.data["detail"] == "Not found."
@@ -379,19 +331,12 @@ def test_update_single_list_item_not_authorized(client):
         imdbid="test0987",
         title="Tester",
     )
-    _list = List.objects.create(
-        owner=user,
-        name=DEFAULT_LIST
-    )
+    _list = List.objects.create(owner=user, name=DEFAULT_LIST)
     item = Item.objects.create(
         _list=_list,
         movie=movie,
     )
     data = json.dumps({"watched": True})
-    resp = client.patch(
-        f"/list/{item.uid}/",
-        data,
-        content_type="application/json"
-    )
+    resp = client.patch(f"/list/{item.uid}/", data, content_type="application/json")
     assert resp.status_code == 401
     assert resp.data["detail"] == "Authentication credentials were not provided."

@@ -1,7 +1,6 @@
 from rest_framework import serializers
 
 from lists.models import Item, List
-from movies.models import Movie
 from movies.serializers import MovieSerializer
 
 
