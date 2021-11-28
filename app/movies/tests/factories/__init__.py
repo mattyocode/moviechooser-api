@@ -30,7 +30,6 @@ class GenreFactory(factory.django.DjangoModelFactory):
 
 class MovieFactory(factory.django.DjangoModelFactory):
 
-    slug = factory.Sequence(lambda n: "slug%s" % n)
     imdbid = factory.Sequence(lambda n: "imdb%s" % n)
     title = factory.Sequence(lambda n: "Tester %s" % n)
     released = fuzzy.FuzzyDate(datetime.date(1930, 1, 1))

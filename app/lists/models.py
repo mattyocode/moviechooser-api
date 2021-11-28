@@ -1,3 +1,5 @@
+import uuid
+
 from django.db import models
 
 from accounts.models import CustomUser
@@ -28,6 +30,7 @@ class Item(models.Model):
     watched = models.BooleanField(default=False)
     added = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
+    uid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
 
     def __str__(self):
         return f"{self.movie} on {self._list}"
