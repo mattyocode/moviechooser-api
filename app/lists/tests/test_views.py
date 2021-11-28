@@ -207,19 +207,6 @@ def test_get_single_list_item(auth_user_client):
 @pytest.mark.django_db
 def test_get_single_list_item_unknown_uid(auth_user_client):
     fake_user_uid = "c2cf96e3-172e-4571-bb1a-71ed0f5ce037"
-    user = CustomUser.objects.get(email="fixture@user.com")
-    movie = MovieFactory(
-        imdbid="test0987",
-        title="Tester",
-    )
-    _list = List.objects.create(
-        owner=user,
-        name=DEFAULT_LIST
-    )
-    item = Item.objects.create(
-        _list=_list,
-        movie=movie,
-    )
     resp = auth_user_client.get(f"/list/{fake_user_uid}/")
     assert resp.status_code == 404
     assert resp.data["detail"] == "Not found."
@@ -241,7 +228,6 @@ def test_get_single_list_item_not_authorized(client):
         movie=movie,
     )
     resp = client.get(f"/list/{item.uid}/")
-    print("resp >", resp.data)
     assert resp.status_code == 401
     assert resp.data["detail"] == "Authentication credentials were not provided."
 
@@ -267,6 +253,17 @@ def test_delete_single_list_item(auth_user_client):
 
     resp_two = auth_user_client.delete(f"/list/{item.uid}/")
     assert resp_two.status_code == 204
-    
+
+    resp_three = auth_user_client.get("/list/")
+    assert resp_three.status_code == 200
+    assert resp_three.data["results"] == []
 
     assert "-tester" in json.dumps(resp.data)
+
+
+@pytest.mark.django_db
+def test_delete_single_list_item_unknown_uid(auth_user_client):
+    fake_user_uid = "c2cf96e3-172e-4571-bb1a-71ed0f5ce037"
+    resp = auth_user_client.delete(f"/list/{fake_user_uid}/")
+    assert resp.status_code == 404
+    assert resp.data["detail"] == "Not found."

@@ -60,3 +60,8 @@ class MovieItemDetail(APIView):
         item = self.get_object(uid)
         serializer = ItemSerializer(item)
         return Response(serializer.data)
+
+    def delete(self, request, uid, format=None):
+        item = self.get_object(uid)
+        item.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
