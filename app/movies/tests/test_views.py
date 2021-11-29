@@ -479,9 +479,7 @@ def test_return_on_list_field_if_user_authed_and_movie_on_their_list(auth_user_c
         movie=funny_movie,
     )
 
-    resp = auth_user_client.get(
-        f"/api/movies/"
-    )
+    resp = auth_user_client.get("/api/movies/")
 
     assert resp.status_code == 200
     assert resp.data["results"][0]["title"] == "Scary Tests"
@@ -511,9 +509,7 @@ def test_return_not_on_list_if_user_not_authed(client):
         movie=funny_movie,
     )
 
-    resp = client.get(
-        f"/api/movies/"
-    )
+    resp = client.get("/api/movies/")
 
     assert resp.status_code == 200
     assert resp.data["results"][0]["title"] == "Scary Tests"
@@ -548,6 +544,22 @@ def test_get_single_movie_not_on_list(auth_user_client):
         movie=movie,
     )
     resp = auth_user_client.get(f"/api/movies/{other_movie.slug}/")
+    assert resp.status_code == 200
+    assert resp.data["title"] == other_movie.title
+    assert resp.data["on_list"] is False
+
+
+@pytest.mark.django_db
+def test_get_single_movie_not_authed(client):
+    user = CustomUser.objects.create(email="standard@user.com", password="test1234")
+    movie = MovieFactory(imdbid="test1234", review=[65, 75])
+    other_movie = MovieFactory(imdbid="test2222", review=[100])
+    _list = List.objects.create(owner=user, name=DEFAULT_LIST)
+    Item.objects.create(
+        _list=_list,
+        movie=movie,
+    )
+    resp = client.get(f"/api/movies/{other_movie.slug}/")
     assert resp.status_code == 200
     assert resp.data["title"] == other_movie.title
     assert resp.data["on_list"] is False

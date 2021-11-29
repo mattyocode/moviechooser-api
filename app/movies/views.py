@@ -1,6 +1,6 @@
 import random
-from django.core.exceptions import ObjectDoesNotExist
 
+from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import Avg, Count
 from django.db.models.expressions import Exists, OuterRef, Value
 from django.http import Http404
@@ -8,10 +8,11 @@ from rest_framework.generics import ListAPIView
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import Genre, Movie
-from .serializers import GenreSerializer, MovieSerializer
 from lists.models import Item, List
 from movies.utils import annotate_object_if_auth
+
+from .models import Genre, Movie
+from .serializers import GenreSerializer, MovieSerializer
 
 
 class MovieList(ListAPIView):
@@ -60,7 +61,7 @@ class MovieList(ListAPIView):
         if self.request.user.is_authenticated:
             try:
                 _list = List.objects.get(owner=self.request.user)
-                items = Item.objects.filter(movie=OuterRef('pk'), _list=_list)
+                items = Item.objects.filter(movie=OuterRef("pk"), _list=_list)
                 movies = movies.annotate(on_list=Exists(items))
             except ObjectDoesNotExist:
                 pass

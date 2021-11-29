@@ -1,5 +1,5 @@
-from django.db.models import Avg
 from django.core.exceptions import ObjectDoesNotExist
+from django.db.models import Avg
 
 from lists.models import Item, List
 
