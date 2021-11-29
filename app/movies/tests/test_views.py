@@ -4,9 +4,13 @@ from unittest import mock
 
 import pytest
 
+from accounts.models import CustomUser
+from lists.models import Item, List
 from movies.models import Actor, Director, OnDemand
 
 from .factories import MovieFactory, MovieWithGenreFactory
+
+DEFAULT_LIST = "watch-list"
 
 
 @pytest.mark.django_db
@@ -449,3 +453,101 @@ def test_dont_return_movies_with_no_poster_url(client):
     assert resp.status_code == 200
     assert "Image movie" in json.dumps(resp.data)
     assert "No image movie" not in json.dumps(resp.data)
+
+
+@pytest.mark.django_db
+def test_return_on_list_field_if_user_authed_and_movie_on_their_list(auth_user_client):
+    user = CustomUser.objects.get(email="fixture@user.com")
+    funny_movie = MovieWithGenreFactory.create(
+        title="Funny Tests",
+        genre=["comedy"],
+        review=[90],
+    )
+    MovieWithGenreFactory.create(
+        title="Scary Tests",
+        genre=["horror"],
+        review=[100],
+    )
+    MovieWithGenreFactory.create(
+        title="Tense Tests",
+        genre=["thriller"],
+        review=[95],
+    )
+    _list = List.objects.create(owner=user, name=DEFAULT_LIST)
+    Item.objects.create(
+        _list=_list,
+        movie=funny_movie,
+    )
+
+    resp = auth_user_client.get(
+        f"/api/movies/"
+    )
+
+    assert resp.status_code == 200
+    assert resp.data["results"][0]["title"] == "Scary Tests"
+    assert resp.data["results"][0]["on_list"] is False
+    assert resp.data["results"][1]["title"] == "Tense Tests"
+    assert resp.data["results"][1]["on_list"] is False
+    assert resp.data["results"][2]["title"] == "Funny Tests"
+    assert resp.data["results"][2]["on_list"] is True
+
+
+@pytest.mark.django_db
+def test_return_not_on_list_if_user_not_authed(client):
+    user = CustomUser.objects.create(email="standard@user.com", password="test1234")
+    funny_movie = MovieWithGenreFactory.create(
+        title="Funny Tests",
+        genre=["comedy"],
+        review=[90],
+    )
+    MovieWithGenreFactory.create(
+        title="Scary Tests",
+        genre=["horror"],
+        review=[100],
+    )
+    _list = List.objects.create(owner=user, name=DEFAULT_LIST)
+    Item.objects.create(
+        _list=_list,
+        movie=funny_movie,
+    )
+
+    resp = client.get(
+        f"/api/movies/"
+    )
+
+    assert resp.status_code == 200
+    assert resp.data["results"][0]["title"] == "Scary Tests"
+    assert resp.data["results"][0]["on_list"] is False
+    assert resp.data["results"][1]["title"] == "Funny Tests"
+    assert resp.data["results"][1]["on_list"] is False
+
+
+@pytest.mark.django_db
+def test_get_single_movie_with_on_list(auth_user_client):
+    user = CustomUser.objects.get(email="fixture@user.com")
+    movie = MovieFactory(imdbid="test1234", review=[65, 75])
+    _list = List.objects.create(owner=user, name=DEFAULT_LIST)
+    Item.objects.create(
+        _list=_list,
+        movie=movie,
+    )
+    resp = auth_user_client.get(f"/api/movies/{movie.slug}/")
+    assert resp.status_code == 200
+    assert resp.data["title"] == movie.title
+    assert resp.data["on_list"] is True
+
+
+@pytest.mark.django_db
+def test_get_single_movie_not_on_list(auth_user_client):
+    user = CustomUser.objects.get(email="fixture@user.com")
+    movie = MovieFactory(imdbid="test1234", review=[65, 75])
+    other_movie = MovieFactory(imdbid="test2222", review=[100])
+    _list = List.objects.create(owner=user, name=DEFAULT_LIST)
+    Item.objects.create(
+        _list=_list,
+        movie=movie,
+    )
+    resp = auth_user_client.get(f"/api/movies/{other_movie.slug}/")
+    assert resp.status_code == 200
+    assert resp.data["title"] == other_movie.title
+    assert resp.data["on_list"] is False

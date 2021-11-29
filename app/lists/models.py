@@ -5,8 +5,6 @@ from django.db import models
 from accounts.models import CustomUser
 from movies.models import Movie
 
-# Create your models here.
-
 
 class List(models.Model):
     owner = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="list")

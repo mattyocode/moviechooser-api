@@ -1,6 +1,8 @@
 import random
+from django.core.exceptions import ObjectDoesNotExist
 
 from django.db.models import Avg, Count
+from django.db.models.expressions import Exists, OuterRef, Value
 from django.http import Http404
 from rest_framework.generics import ListAPIView
 from rest_framework.response import Response
@@ -8,6 +10,8 @@ from rest_framework.views import APIView
 
 from .models import Genre, Movie
 from .serializers import GenreSerializer, MovieSerializer
+from lists.models import Item, List
+from movies.utils import annotate_object_if_auth
 
 
 class MovieList(ListAPIView):
@@ -20,7 +24,8 @@ class MovieList(ListAPIView):
         runtime_from = self.request.GET.get("rmin")
         runtime_to = self.request.GET.get("rmax")
 
-        movies = Movie.objects.annotate(avg_rating=Avg("reviews__score"))
+        movies = Movie.objects.all()
+        # movies = Movie.objects.annotate(avg_rating=Avg("reviews__score"))
 
         if len(genres) > 0:
             movies = movies.filter(genre__id__in=genres)
@@ -50,6 +55,18 @@ class MovieList(ListAPIView):
                 runtime_to = int(runtime_to) + 3
             movies = movies.filter(runtime__range=[runtime_from, runtime_to])
 
+        movies = movies.annotate(on_list=Value(False))
+
+        if self.request.user.is_authenticated:
+            try:
+                _list = List.objects.get(owner=self.request.user)
+                items = Item.objects.filter(movie=OuterRef('pk'), _list=_list)
+                movies = movies.annotate(on_list=Exists(items))
+            except ObjectDoesNotExist:
+                pass
+
+        movies = movies.annotate(avg_rating=Avg("reviews__score"))
+
         return (
             movies.order_by("-avg_rating")
             .distinct()
@@ -67,7 +84,7 @@ class MovieDetail(APIView):
 
     def get(self, request, slug, format=None):
         movie = self.get_object(slug)
-        movie.avg_rating = movie.reviews.aggregate(avg_score=Avg("score"))["avg_score"]
+        movie = annotate_object_if_auth(request, movie)
         serializer = MovieSerializer(movie)
         return Response(serializer.data)
 
@@ -75,11 +92,9 @@ class MovieDetail(APIView):
 class RandomMovie(APIView):
     def get(self, request):
         movies = list(Movie.objects.all())
-        random_movie = random.choice(movies)
-        random_movie.avg_rating = random_movie.reviews.aggregate(
-            avg_score=Avg("score")
-        )["avg_score"]
-        serializer = MovieSerializer(random_movie)
+        movie = random.choice(movies)
+        movie = annotate_object_if_auth(request, movie)
+        serializer = MovieSerializer(movie)
         return Response(serializer.data)
 
 
