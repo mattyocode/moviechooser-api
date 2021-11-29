@@ -9,18 +9,23 @@ from movies.tests.factories import MovieFactory
 DEFAULT_LIST = "watch-list"
 
 
-@pytest.mark.django_db
-def test_get_all_list_items(auth_user_client):
-    user = CustomUser.objects.get(email="fixture@user.com")
+def create_item_with_list_and_movie(user):
     movie = MovieFactory(
         imdbid="test0987",
         title="Tester",
     )
     _list = List.objects.create(owner=user, name=DEFAULT_LIST)
-    Item.objects.create(
+    item = Item.objects.create(
         _list=_list,
         movie=movie,
     )
+    return item
+
+
+@pytest.mark.django_db
+def test_get_all_list_items(auth_user_client):
+    user = CustomUser.objects.get(email="fixture@user.com")
+    create_item_with_list_and_movie(user)
     resp = auth_user_client.get("/list/")
     assert resp.status_code == 200
     assert resp.data["results"][0]["_list"]["name"] == DEFAULT_LIST
@@ -39,15 +44,8 @@ def test_get_all_list_items_no_list_exists(auth_user_client):
 @pytest.mark.django_db
 def test_get_all_list_items_not_authorized(client):
     user = CustomUser.objects.create_user(email="standard@user.com", password="testpw")
-    movie = MovieFactory(
-        imdbid="test0987",
-        title="Tester",
-    )
-    _list = List.objects.create(owner=user, name=DEFAULT_LIST)
-    Item.objects.create(
-        _list=_list,
-        movie=movie,
-    )
+    create_item_with_list_and_movie(user)
+
     resp = client.get("/list/")
     assert resp.status_code == 401
     assert resp.data["detail"] == "Authentication credentials were not provided."
@@ -60,15 +58,7 @@ def test_get_all_list_items_from_authorized_user_only(auth_user_client):
     other_user = CustomUser.objects.create_user(
         email="standard@user.com", password="testpw"
     )
-    movie = MovieFactory(
-        imdbid="test0987",
-        title="Tester",
-    )
-    _list = List.objects.create(owner=other_user, name=DEFAULT_LIST)
-    Item.objects.create(
-        _list=_list,
-        movie=movie,
-    )
+    create_item_with_list_and_movie(other_user)
     resp = auth_user_client.get("/list/")
     assert resp.status_code == 200
     assert resp.data["results"] == []
@@ -108,7 +98,6 @@ def test_add_list_item_unknown_slug(auth_user_client):
     }
     data = json.dumps(data)
     resp = auth_user_client.post("/list/", data, content_type="application/json")
-    print("RESP >>", resp.__dict__)
     assert resp.status_code == 400
     assert resp.data["detail"] == "movie does not exist."
 
@@ -128,7 +117,7 @@ def test_add_list_item_no_slug(auth_user_client):
     data = {}
     data = json.dumps(data)
     resp = auth_user_client.post("/list/", data, content_type="application/json")
-    print("RESP >>", resp.__dict__)
+
     assert resp.status_code == 400
     assert "This field is required." in resp.data["movie_slug"]
 
@@ -160,15 +149,8 @@ def test_add_list_item_user_not_authorized(client):
 @pytest.mark.django_db
 def test_get_single_list_item(auth_user_client):
     user = CustomUser.objects.get(email="fixture@user.com")
-    movie = MovieFactory(
-        imdbid="test0987",
-        title="Tester",
-    )
-    _list = List.objects.create(owner=user, name=DEFAULT_LIST)
-    item = Item.objects.create(
-        _list=_list,
-        movie=movie,
-    )
+    item = create_item_with_list_and_movie(user)
+
     resp = auth_user_client.get(f"/list/{item.uid}/")
     assert resp.status_code == 200
     assert resp.data["_list"]["name"] == DEFAULT_LIST
@@ -188,15 +170,7 @@ def test_get_single_list_item_unknown_uid(auth_user_client):
 @pytest.mark.django_db
 def test_get_single_list_item_not_authorized(client):
     user = CustomUser.objects.create_user(email="standard@user.com", password="testpw")
-    movie = MovieFactory(
-        imdbid="test0987",
-        title="Tester",
-    )
-    _list = List.objects.create(owner=user, name=DEFAULT_LIST)
-    item = Item.objects.create(
-        _list=_list,
-        movie=movie,
-    )
+    item = create_item_with_list_and_movie(user)
     resp = client.get(f"/list/{item.uid}/")
     assert resp.status_code == 401
     assert resp.data["detail"] == "Authentication credentials were not provided."
@@ -205,15 +179,7 @@ def test_get_single_list_item_not_authorized(client):
 @pytest.mark.django_db
 def test_delete_single_list_item(auth_user_client):
     user = CustomUser.objects.get(email="fixture@user.com")
-    movie = MovieFactory(
-        imdbid="test0987",
-        title="Tester",
-    )
-    _list = List.objects.create(owner=user, name=DEFAULT_LIST)
-    item = Item.objects.create(
-        _list=_list,
-        movie=movie,
-    )
+    item = create_item_with_list_and_movie(user)
     resp = auth_user_client.get(f"/list/{item.uid}/")
     assert resp.status_code == 200
     assert resp.data["movie"]["title"] == "Tester"
@@ -231,15 +197,8 @@ def test_delete_single_list_item(auth_user_client):
 @pytest.mark.django_db
 def test_delete_single_list_item_not_authorized(client):
     user = CustomUser.objects.create_user(email="standard@user.com", password="testpw")
-    movie = MovieFactory(
-        imdbid="test0987",
-        title="Tester",
-    )
-    _list = List.objects.create(owner=user, name=DEFAULT_LIST)
-    item = Item.objects.create(
-        _list=_list,
-        movie=movie,
-    )
+    item = create_item_with_list_and_movie(user)
+
     resp = client.delete(f"/list/{item.uid}/")
     assert resp.status_code == 401
     assert resp.data["detail"] == "Authentication credentials were not provided."
@@ -256,15 +215,8 @@ def test_delete_single_list_item_unknown_uid(auth_user_client):
 @pytest.mark.django_db
 def test_update_single_list_item(auth_user_client):
     user = CustomUser.objects.get(email="fixture@user.com")
-    movie = MovieFactory(
-        imdbid="test0987",
-        title="Tester",
-    )
-    _list = List.objects.create(owner=user, name=DEFAULT_LIST)
-    item = Item.objects.create(
-        _list=_list,
-        movie=movie,
-    )
+    item = create_item_with_list_and_movie(user)
+
     resp = auth_user_client.get(f"/list/{item.uid}/")
     assert resp.status_code == 200
     assert resp.data["movie"]["title"] == "Tester"
@@ -286,15 +238,8 @@ def test_update_single_list_item(auth_user_client):
 @pytest.mark.django_db
 def test_update_single_list_item_invalid_json_keys(auth_user_client):
     user = CustomUser.objects.get(email="fixture@user.com")
-    movie = MovieFactory(
-        imdbid="test0987",
-        title="Tester",
-    )
-    _list = List.objects.create(owner=user, name=DEFAULT_LIST)
-    item = Item.objects.create(
-        _list=_list,
-        movie=movie,
-    )
+    item = create_item_with_list_and_movie(user)
+
     resp = auth_user_client.get(f"/list/{item.uid}/")
     assert resp.status_code == 200
     assert resp.data["movie"]["title"] == "Tester"
@@ -327,15 +272,8 @@ def test_update_single_list_item_unknown_uid(auth_user_client):
 @pytest.mark.django_db
 def test_update_single_list_item_not_authorized(client):
     user = CustomUser.objects.create_user(email="standard@user.com", password="testpw")
-    movie = MovieFactory(
-        imdbid="test0987",
-        title="Tester",
-    )
-    _list = List.objects.create(owner=user, name=DEFAULT_LIST)
-    item = Item.objects.create(
-        _list=_list,
-        movie=movie,
-    )
+    item = create_item_with_list_and_movie(user)
+
     data = json.dumps({"watched": True})
     resp = client.patch(f"/list/{item.uid}/", data, content_type="application/json")
     assert resp.status_code == 401
