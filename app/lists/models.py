@@ -17,10 +17,8 @@ class List(models.Model):
 
 
 class Item(models.Model):
-    _list = models.ForeignKey(List, on_delete=models.CASCADE, related_name="list_item")
-    movie = models.ForeignKey(
-        Movie, on_delete=models.CASCADE, related_name="movie_item"
-    )
+    _list = models.ForeignKey(List, on_delete=models.CASCADE, related_name="item")
+    movie = models.ForeignKey(Movie, on_delete=models.CASCADE, related_name="item")
     watched = models.BooleanField(default=False)
     added = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)

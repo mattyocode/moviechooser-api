@@ -83,7 +83,6 @@ class PasswordTokenCheck(GenericAPIView):
 
     def get(self, request, uidb64, token):
         redirect_url = request.GET.get("redirect_url", "")
-        print("PasswordTokenCheckAPI runs!!!", redirect_url)
         try:
             uid = smart_str(urlsafe_base64_decode(uidb64))
             user = CustomUser.objects.get(uid=uid)

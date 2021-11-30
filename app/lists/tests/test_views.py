@@ -31,6 +31,7 @@ def test_get_all_list_items(auth_user_client):
     assert resp.data["results"][0]["_list"]["name"] == DEFAULT_LIST
     assert resp.data["results"][0]["watched"] is False
     assert "-tester" in resp.data["results"][0]["movie"]["slug"]
+    assert type(resp.data["results"][0]["movie"]["avg_rating"]) is float
 
 
 @pytest.mark.django_db
@@ -156,6 +157,7 @@ def test_get_single_list_item(auth_user_client):
     assert resp.data["_list"]["name"] == DEFAULT_LIST
     assert resp.data["watched"] is False
     assert resp.data["movie"]["title"] == "Tester"
+    assert type(resp.data["movie"]["avg_rating"]) is float
     assert "-tester" in json.dumps(resp.data)
 
 

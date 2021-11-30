@@ -1,11 +1,12 @@
 from django.core.exceptions import ObjectDoesNotExist
-from django.db.models import Avg
 
 from lists.models import Item, List
 
+# from django.db.models import Avg
+
 
 def annotate_object_if_auth(request, movie):
-    movie.avg_rating = movie.reviews.aggregate(avg_score=Avg("score"))["avg_score"]
+    # movie.avg_rating = movie.reviews.aggregate(avg_score=Avg("score"))["avg_score"]
     movie.on_list = False
 
     if request.user.is_authenticated:
