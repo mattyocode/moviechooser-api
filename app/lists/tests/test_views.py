@@ -152,7 +152,7 @@ def test_get_single_list_item(auth_user_client):
     user = CustomUser.objects.get(email="fixture@user.com")
     item = create_item_with_list_and_movie(user)
 
-    resp = auth_user_client.get(f"/list/{item.uid}/")
+    resp = auth_user_client.get(f"/list/{item.movie.slug}/")
     assert resp.status_code == 200
     assert resp.data["_list"]["name"] == DEFAULT_LIST
     assert resp.data["watched"] is False
@@ -163,8 +163,7 @@ def test_get_single_list_item(auth_user_client):
 
 @pytest.mark.django_db
 def test_get_single_list_item_unknown_uid(auth_user_client):
-    fake_user_uid = "c2cf96e3-172e-4571-bb1a-71ed0f5ce037"
-    resp = auth_user_client.get(f"/list/{fake_user_uid}/")
+    resp = auth_user_client.get("/list/fake-movie-slug/")
     assert resp.status_code == 404
     assert resp.data["detail"] == "Not found."
 
@@ -173,7 +172,7 @@ def test_get_single_list_item_unknown_uid(auth_user_client):
 def test_get_single_list_item_not_authorized(client):
     user = CustomUser.objects.create_user(email="standard@user.com", password="testpw")
     item = create_item_with_list_and_movie(user)
-    resp = client.get(f"/list/{item.uid}/")
+    resp = client.get(f"/list/{item.movie.slug}/")
     assert resp.status_code == 401
     assert resp.data["detail"] == "Authentication credentials were not provided."
 
@@ -182,13 +181,13 @@ def test_get_single_list_item_not_authorized(client):
 def test_delete_single_list_item(auth_user_client):
     user = CustomUser.objects.get(email="fixture@user.com")
     item = create_item_with_list_and_movie(user)
-    resp = auth_user_client.get(f"/list/{item.uid}/")
+    resp = auth_user_client.get(f"/list/{item.movie.slug}/")
     assert resp.status_code == 200
     assert resp.data["movie"]["title"] == "Tester"
 
-    resp_two = auth_user_client.delete(f"/list/{item.uid}/")
+    resp_two = auth_user_client.delete(f"/list/{item.movie.slug}/")
     assert resp_two.status_code == 204
-    assert resp_two.data["deleted"] == str(item.uid)
+    assert resp_two.data["deleted"] == str(item.movie.slug)
 
     resp_three = auth_user_client.get("/list/")
     assert resp_three.status_code == 200
@@ -201,7 +200,7 @@ def test_delete_single_list_item_not_authorized(client):
     user = CustomUser.objects.create_user(email="standard@user.com", password="testpw")
     item = create_item_with_list_and_movie(user)
 
-    resp = client.delete(f"/list/{item.uid}/")
+    resp = client.delete(f"/list/{item.movie.slug}/")
     assert resp.status_code == 401
     assert resp.data["detail"] == "Authentication credentials were not provided."
 
@@ -219,7 +218,7 @@ def test_update_single_list_item(auth_user_client):
     user = CustomUser.objects.get(email="fixture@user.com")
     item = create_item_with_list_and_movie(user)
 
-    resp = auth_user_client.get(f"/list/{item.uid}/")
+    resp = auth_user_client.get(f"/list/{item.movie.slug}/")
     assert resp.status_code == 200
     assert resp.data["movie"]["title"] == "Tester"
     assert resp.data["watched"] is False
@@ -227,11 +226,11 @@ def test_update_single_list_item(auth_user_client):
     data = json.dumps({"watched": True})
 
     resp_two = auth_user_client.patch(
-        f"/list/{item.uid}/", data, content_type="application/json"
+        f"/list/{item.movie.slug}/", data, content_type="application/json"
     )
     assert resp_two.status_code == 204
 
-    resp_three = auth_user_client.get(f"/list/{item.uid}/")
+    resp_three = auth_user_client.get(f"/list/{item.movie.slug}/")
     assert resp_three.status_code == 200
     assert resp_three.data["movie"]["title"] == "Tester"
     assert resp_three.data["watched"] is True
@@ -242,7 +241,7 @@ def test_update_single_list_item_invalid_json_keys(auth_user_client):
     user = CustomUser.objects.get(email="fixture@user.com")
     item = create_item_with_list_and_movie(user)
 
-    resp = auth_user_client.get(f"/list/{item.uid}/")
+    resp = auth_user_client.get(f"/list/{item.movie.slug}/")
     assert resp.status_code == 200
     assert resp.data["movie"]["title"] == "Tester"
     assert resp.data["watched"] is False
@@ -250,11 +249,11 @@ def test_update_single_list_item_invalid_json_keys(auth_user_client):
     data = json.dumps({"unknown_field": True})
 
     resp_two = auth_user_client.patch(
-        f"/list/{item.uid}/", data, content_type="application/json"
+        f"/list/{item.movie.slug}/", data, content_type="application/json"
     )
     assert resp_two.status_code == 204
 
-    resp_three = auth_user_client.get(f"/list/{item.uid}/")
+    resp_three = auth_user_client.get(f"/list/{item.movie.slug}/")
     assert resp_three.status_code == 200
     assert resp_three.data["movie"]["title"] == "Tester"
     assert "unknown_field" not in json.dumps(resp_three.data)
@@ -277,6 +276,8 @@ def test_update_single_list_item_not_authorized(client):
     item = create_item_with_list_and_movie(user)
 
     data = json.dumps({"watched": True})
-    resp = client.patch(f"/list/{item.uid}/", data, content_type="application/json")
+    resp = client.patch(
+        f"/list/{item.movie.slug}/", data, content_type="application/json"
+    )
     assert resp.status_code == 401
     assert resp.data["detail"] == "Authentication credentials were not provided."

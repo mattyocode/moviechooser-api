@@ -4,5 +4,5 @@ from .views import MovieItemDetail, MovieItemList
 
 urlpatterns = [
     path("", MovieItemList.as_view()),
-    path("<str:uid>/", MovieItemDetail.as_view()),
+    path("<str:slug>/", MovieItemDetail.as_view()),
 ]

@@ -50,24 +50,31 @@ class MovieItemDetail(APIView):
     serializer_class = ItemSerializer
     permission_classes = [permissions.IsAuthenticated]
 
-    def get_object(self, uid):
+    # def get_object(self, uid):
+    #     try:
+    #         return Item.objects.get(uid=uid)
+    #     except Item.DoesNotExist:
+    #         raise Http404
+
+    def get_object(self, slug):
         try:
-            return Item.objects.get(uid=uid)
+            # _list = List.objects.get(owner=self.request.user)
+            return Item.objects.get(movie__slug=slug, _list__owner=self.request.user)
         except Item.DoesNotExist:
             raise Http404
 
-    def get(self, request, uid, format=None):
-        item = self.get_object(uid)
+    def get(self, request, slug, format=None):
+        item = self.get_object(slug)
         serializer = self.serializer_class(item)
         return Response(serializer.data)
 
-    def delete(self, request, uid, format=None):
-        item = self.get_object(uid)
+    def delete(self, request, slug, format=None):
+        item = self.get_object(slug)
         item.delete()
-        return Response({"deleted": uid}, status=status.HTTP_204_NO_CONTENT)
+        return Response({"deleted": slug}, status=status.HTTP_204_NO_CONTENT)
 
-    def patch(self, request, uid, format=None):
-        item = self.get_object(uid)
+    def patch(self, request, slug, format=None):
+        item = self.get_object(slug)
         serializer = self.serializer_class(item, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
