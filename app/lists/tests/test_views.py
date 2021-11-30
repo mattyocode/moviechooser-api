@@ -188,11 +188,11 @@ def test_delete_single_list_item(auth_user_client):
 
     resp_two = auth_user_client.delete(f"/list/{item.uid}/")
     assert resp_two.status_code == 204
+    assert resp_two.data["deleted"] == str(item.uid)
 
     resp_three = auth_user_client.get("/list/")
     assert resp_three.status_code == 200
     assert resp_three.data["results"] == []
-
     assert "-tester" in json.dumps(resp.data)
 
 
