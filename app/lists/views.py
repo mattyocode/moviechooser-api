@@ -71,7 +71,7 @@ class MovieItemDetail(APIView):
     def delete(self, request, slug, format=None):
         item = self.get_object(slug)
         item.delete()
-        return Response({"deleted": slug}, status=status.HTTP_204_NO_CONTENT)
+        return Response({"deleted": str(item.uid)}, status=status.HTTP_200_OK)
 
     def patch(self, request, slug, format=None):
         item = self.get_object(slug)

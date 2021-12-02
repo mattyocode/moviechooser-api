@@ -16,7 +16,7 @@ class ItemSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Item
-        fields = ["_list", "movie", "watched", "added", "updated"]
+        fields = ["_list", "movie", "watched", "added", "updated", "uid"]
         read_only_fields = ["added", "updated"]
 
 

@@ -25,13 +25,14 @@ def create_item_with_list_and_movie(user):
 @pytest.mark.django_db
 def test_get_all_list_items(auth_user_client):
     user = CustomUser.objects.get(email="fixture@user.com")
-    create_item_with_list_and_movie(user)
+    item = create_item_with_list_and_movie(user)
     resp = auth_user_client.get("/list/")
     assert resp.status_code == 200
     assert resp.data["results"][0]["_list"]["name"] == DEFAULT_LIST
     assert resp.data["results"][0]["watched"] is False
     assert "-tester" in resp.data["results"][0]["movie"]["slug"]
     assert type(resp.data["results"][0]["movie"]["avg_rating"]) is float
+    assert resp.data["results"][0]["uid"] == str(item.uid)
 
 
 @pytest.mark.django_db
@@ -186,8 +187,8 @@ def test_delete_single_list_item(auth_user_client):
     assert resp.data["movie"]["title"] == "Tester"
 
     resp_two = auth_user_client.delete(f"/list/{item.movie.slug}/")
-    assert resp_two.status_code == 204
-    assert resp_two.data["deleted"] == str(item.movie.slug)
+    assert resp_two.status_code == 200
+    assert resp_two.data["deleted"] == str(item.uid)
 
     resp_three = auth_user_client.get("/list/")
     assert resp_three.status_code == 200
