@@ -6,6 +6,7 @@ import requests
 from django.core.mail import EmailMessage
 
 recaptcha_secret_key = os.environ.get("RECAPTCHA_SECRET_KEY")
+# ENV = os.environ.get("ENV_NAME")
 
 
 def recaptcha_submit(token):
@@ -13,6 +14,8 @@ def recaptcha_submit(token):
         f"https://www.google.com/recaptcha/api/siteverify?secret={recaptcha_secret_key}&response={token}",
     )
     response = response.json()
+    # if ENV == "local":
+    #     response["success"] = True
     return response["success"]
 
 
