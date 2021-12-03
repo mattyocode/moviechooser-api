@@ -229,7 +229,7 @@ def test_update_single_list_item(auth_user_client):
     resp_two = auth_user_client.patch(
         f"/list/{item.movie.slug}/", data, content_type="application/json"
     )
-    assert resp_two.status_code == 204
+    assert resp_two.status_code == 200
 
     resp_three = auth_user_client.get(f"/list/{item.movie.slug}/")
     assert resp_three.status_code == 200
@@ -252,7 +252,7 @@ def test_update_single_list_item_invalid_json_keys(auth_user_client):
     resp_two = auth_user_client.patch(
         f"/list/{item.movie.slug}/", data, content_type="application/json"
     )
-    assert resp_two.status_code == 204
+    assert resp_two.status_code == 200
 
     resp_three = auth_user_client.get(f"/list/{item.movie.slug}/")
     assert resp_three.status_code == 200
