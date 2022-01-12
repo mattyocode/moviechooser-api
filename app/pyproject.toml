@@ -15,6 +15,7 @@ django-cors-headers = "^3.10.0"
 djangorestframework-simplejwt = "^5.0.0"
 requests = "^2.26.0"
 django-ses = "^2.3.0"
+drf-yasg = "^1.20.0"
 
 [tool.poetry.dev-dependencies]
 pytest = "^6.2.5"
