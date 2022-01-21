@@ -54,6 +54,9 @@ The Dockerized app is deployed to an AWS Lightsail instance via Github Actions. 
 
    ```bash
    docker-compose -f docker-compose.dev.yml exec movies pytest
+   docker-compose -f docker-compose.dev.yml exec movies black .
+   docker-compose -f docker-compose.dev.yml exec movies flake8
+   docker-compose -f docker-compose.dev.yml exec movies isort .
    ```
 
 ## Featured Code
