@@ -23,7 +23,6 @@ class MovieItemList(ListAPIView):
             return List.objects.create(name=name, owner=owner)
 
     def get_queryset(self, format=None):
-        # list_name = self.request.data.get("list", DEFAULT_LIST)
         user = self.request.user
         _list = self.get_list_or_create(name=DEFAULT_LIST, owner=user)
         return Item.objects.filter(_list=_list).order_by("-added")
@@ -50,15 +49,8 @@ class MovieItemDetail(APIView):
     serializer_class = ItemSerializer
     permission_classes = [permissions.IsAuthenticated]
 
-    # def get_object(self, uid):
-    #     try:
-    #         return Item.objects.get(uid=uid)
-    #     except Item.DoesNotExist:
-    #         raise Http404
-
     def get_object(self, slug):
         try:
-            # _list = List.objects.get(owner=self.request.user)
             return Item.objects.get(movie__slug=slug, _list__owner=self.request.user)
         except Item.DoesNotExist:
             raise Http404

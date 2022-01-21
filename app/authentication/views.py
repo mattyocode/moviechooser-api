@@ -40,10 +40,6 @@ class RequestPasswordResetEmail(GenericAPIView):
             serializer.validated_data["recaptcha_key"]
         )
 
-        print("reset request sent by >>>", email)
-        print("valid recaptcha? >>", is_valid_recaptcha)
-        print("user exists? >>", CustomUser.objects.filter(email=email).exists())
-
         if CustomUser.objects.filter(email=email).exists() and is_valid_recaptcha:
             user = CustomUser.objects.get(email=email)
             uidb64 = urlsafe_base64_encode(smart_bytes(user.uid))
@@ -61,7 +57,7 @@ class RequestPasswordResetEmail(GenericAPIView):
 
             email_body = f"Hi movie fan,\n\nUse the following link to reset your password:\
                     \n\n{abs_url}?redirect_url={redirect_url}"
-            print("before send mail >>", user.email)
+
             try:
                 send_email(
                     subject="Reset your password",
@@ -71,7 +67,7 @@ class RequestPasswordResetEmail(GenericAPIView):
                 )
             except Exception as e:
                 print("send_mail exception >>", e)
-            print("after send mail >>", user.email)
+
         return Response(
             {"success": "Reset password email sent if account exists"},
             status=status.HTTP_200_OK,
