@@ -47,9 +47,6 @@ class RegisterViewSet(ModelViewSet, TokenObtainPairView):
             serializer.validated_data["recaptcha_key"]
         )
 
-        # if DEBUG:
-        #     is_valid_recaptcha = True
-
         if is_valid_recaptcha is True:
             user_data = {}
             user_data["email"] = serializer.validated_data["email"]
