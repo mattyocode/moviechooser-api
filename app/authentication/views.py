@@ -25,7 +25,6 @@ FRONTEND_URL = os.environ.get("FRONTEND_URL", "")
 
 
 class CustomRedirect(HttpResponsePermanentRedirect):
-    print("custom redirect")
     allowed_schemes = [os.environ.get("DEBUG"), "https", "http"]
 
 
@@ -66,7 +65,7 @@ class RequestPasswordResetEmail(GenericAPIView):
                     recipient_list=[f"{user.email}"],
                 )
             except Exception as e:
-                print("send_mail exception >>", e)
+                print("Send email eror: ", e)
 
         return Response(
             {"success": "Reset password email sent if account exists"},
@@ -82,18 +81,17 @@ class PasswordTokenCheck(GenericAPIView):
         try:
             uid = smart_str(urlsafe_base64_decode(uidb64))
             user = CustomUser.objects.get(uid=uid)
-            if not PasswordResetTokenGenerator().check_token(user, token):
-                if redirect_url != "":
-                    return CustomRedirect(f"{redirect_url}/?token_valid=False")
-                else:
-                    return CustomRedirect(f"{FRONTEND_URL}/?token_valid=False")
+            password_is_valid = PasswordResetTokenGenerator().check_token(user, token)
 
-            if redirect_url != "":
+            if redirect_url == "":
+                return CustomRedirect(f"{FRONTEND_URL}/?token_valid=False")
+
+            if password_is_valid:
                 return CustomRedirect(
                     f"{redirect_url}/?token_valid=True&message=valid&uidb64={uidb64}&token={token}"
                 )
             else:
-                return CustomRedirect(f"{FRONTEND_URL}/?token_valid=False")
+                return CustomRedirect(f"{redirect_url}/?token_valid=False")
 
         except (DjangoUnicodeDecodeError, ObjectDoesNotExist):
             pass
