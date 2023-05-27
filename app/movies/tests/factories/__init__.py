@@ -10,7 +10,6 @@ faker = FakerFactory.create()
 
 
 class ReviewFactory(factory.django.DjangoModelFactory):
-
     id = factory.Sequence(lambda n: "%03d" % n)
     source = fuzzy.FuzzyText(length=4, suffix="_review")
     score = fuzzy.FuzzyInteger(50, 100)
@@ -20,7 +19,6 @@ class ReviewFactory(factory.django.DjangoModelFactory):
 
 
 class GenreFactory(factory.django.DjangoModelFactory):
-
     id = factory.Sequence(lambda n: "%s" % n)
     name = factory.LazyAttribute(lambda x: faker.name())
 
@@ -29,7 +27,6 @@ class GenreFactory(factory.django.DjangoModelFactory):
 
 
 class MovieFactory(factory.django.DjangoModelFactory):
-
     imdbid = factory.Sequence(lambda n: "imdb%s" % n)
     title = factory.Sequence(lambda n: "Tester %s" % n)
     released = fuzzy.FuzzyDate(datetime.date(1930, 1, 1))
