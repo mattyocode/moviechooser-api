@@ -6,15 +6,15 @@ authors = ["mattyocode"]
 
 [tool.poetry.dependencies]
 python = "^3.9"
-Django = "3.2.12"
+Django = "3.2.19"
 djangorestframework = "3.12.4"
 psycopg2-binary = "2.9.1"
 gunicorn = "20.1.0"
 whitenoise = "5.2.0"
 django-cors-headers = "^3.10.0"
 djangorestframework-simplejwt = "^5.0.0"
-requests = "^2.26.0"
-django-ses = "^2.3.0"
+requests = "^2.31.0"
+django-ses = "3.5.0"
 
 [tool.poetry.dev-dependencies]
 pytest = "^6.2.5"
@@ -22,7 +22,7 @@ pytest-django = "4.4.0"
 pytest-factoryboy = "^2.1.0"
 pytest-cov = "^2.12.1"
 flake8 = "^3.9.2"
-black = "21.6b0"
+black = "23.3.0"
 isort = "5.9.1"
 pytest-mock = "^3.6.1"
 
