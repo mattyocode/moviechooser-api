@@ -13,7 +13,8 @@ services:
     env_file:
       - ./app/.env.dev
     depends_on:
-      - mc-dev-db
+      mc-dev-db:
+        condition: service_healthy
 
   nginx:
     image: nginx:latest
@@ -36,6 +37,38 @@ services:
       - POSTGRES_USER=movies
       - POSTGRES_PASSWORD=movies45654
       - POSTGRES_DB=mc_dev
+    healthcheck:
+      test: pg_isready -U movies -d mc_dev
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  redis:
+    image: redis:latest
+    container_name: redis
+
+  celery:
+    build: ./app
+    command: >
+      celery -A config worker -l info
+    volumes:
+      - ./app/:/app/
+    env_file:
+      - ./app/.env.dev
+    depends_on:
+      - redis
+      - nginx
+
+  # celery-beat:
+  #   build: ./app
+  #   command: celery -A app beat -l info
+  #   volumes:
+  #     - ./app/:/app/
+  #   env_file:
+  #     - ./app/.env.dev
+  #   depends_on:
+  #     - celery
+
 
 volumes:
   postgres_data:
