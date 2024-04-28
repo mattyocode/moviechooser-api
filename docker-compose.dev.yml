@@ -27,9 +27,11 @@ services:
       - _OUTPUT_DIR=/etc/nginx
 
   mc-dev-db:
-    image: postgres:13-alpine
+    image: postgres:15-alpine
+    container_name: mc-dev-db
     volumes:
-      - postgres_data:/var/llib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data
+      - ./db_dump:/dump
     environment:
       - POSTGRES_USER=movies
       - POSTGRES_PASSWORD=movies45654
