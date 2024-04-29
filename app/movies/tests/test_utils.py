@@ -11,14 +11,6 @@ def omdb_instance():
     return omdb_instance
 
 
-# def test_requests_get_called_with_id(omdb_instance, mock_requests_get):
-#     omdb_instance.write_to_json = MagicMock()
-#     omdb_instance.search_by_id("tt11525644")
-#     args, _ = mock_requests_get.call_args
-#     assert "tt11525644" in args[0]
-#     omdb_instance.write_to_json.assert_called()
-
-
 def test_runtime_to_int(omdb_instance):
     omdb_obj = {"Runtime": "115 min"}
     output = omdb_instance.runtime_to_int(omdb_obj)
@@ -106,39 +98,13 @@ def test_check_values_returns_false(omdb_instance):
     assert output == False
 
 
-# Integration test
-def test_json_to_postgres_format(omdb_instance):
-    omdb_obj = {
-        "Title": "No Sudden Move",
-        "Released": "01 Jul 2021",
-        "Runtime": "999 min",
-        "Ratings": [
-            {"Source": "Internet Movie Database", "Value": "6.5/10"},
-            {"Source": "Rotten Tomatoes", "Value": "91%"},
-            {"Source": "Metacritic", "Value": "76/100"},
-        ],
-        "Metascore": "76",
-        "imdbRating": "6.5",
-        "imdbID": "tt11525644",
-        "Response": "True",
-    }
-    output = omdb_instance.json_to_postgres_format(omdb_obj)
-    assert output["Runtime"] == 999
-    assert output["imdbRating"] == 65
-    assert output["Metascore"] == 76
-    assert output["Rottenscore"] == 91
-    assert output["Released"] == "01-Jul-2021"
-    assert output["ag_score"] == 77.3
-
-
-# Integration test
 def test_data_for_postgres_by_id(omdb_instance, mock_requests_get):
-    omdb_instance.write_to_json = MagicMock()
-    omdb_instance.add_to_error_log = MagicMock()
-    output = omdb_instance.data_for_postgres_by_id("tt11525644")
+    output = omdb_instance.get_data()
+    assert output["Ratings"] == {
+        "imdb": 65,
+        "rotten_toms": 91,
+        "metacritic": 76,
+    }
     assert output["Runtime"] == 999
-    assert output["imdbRating"] == 65
-    assert output["Metascore"] == 76
-    assert output["Rottenscore"] == 91
     assert output["Released"] == "01-Jul-2021"
     assert output["ag_score"] == 77.3
