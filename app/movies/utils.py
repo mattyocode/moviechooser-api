@@ -6,6 +6,8 @@ import requests
 from django.core.exceptions import ObjectDoesNotExist
 from lists.models import Item, List
 
+from .constants import ReviewSources
+
 log = logging.Logger(__name__)
 
 
@@ -34,6 +36,11 @@ def annotate_object_if_auth(request, movie):
 
 class OMDBFetch:
     """Class to handle fetching movie data for adding to DB."""
+    SOURCE_NAME_MAPPING = {
+        "Internet Movie Database": ReviewSources.IMDB.value,
+        "Metacritic": ReviewSources.METACRITIC.value,
+        "Rotten Tomatoes": ReviewSources.ROTTEN_TOMATOES.value,
+    }
 
     def __init__(self, imdbid: str):
         self.imdbid = imdbid
@@ -68,18 +75,13 @@ class OMDBFetch:
         for review in reviews:
             score_extract_functions = {
                 "Internet Movie Database": lambda score: int(
-                    float(score[: score.find("/")]) * 10
+                    float(score.split("/")[0]) * 10
                 ),
-                "Metacritic": lambda score: int(score[: score.find("/")]),
-                "Rotten Tomatoes": lambda score: int(score[: score.find("%")]),
-            }
-            source_column_name = {
-                "Internet Movie Database": "imdb",
-                "Metacritic": "metacritic",
-                "Rotten Tomatoes": "rotten_toms",
+                "Metacritic": lambda score: int(score.split("/")[0]),
+                "Rotten Tomatoes": lambda score: int(score.split("%")[0]),
             }
             try:
-                source_name = source_column_name[review["Source"]]
+                source_name = self.SOURCE_NAME_MAPPING[review["Source"]]
                 base_score = review["Value"]
                 score_extract_function = score_extract_functions[review["Source"]]
                 score_integer = score_extract_function(base_score)
@@ -98,14 +100,15 @@ class OMDBFetch:
     def add_ag_score(self, omdb_json):
         total = 0
         num_scores = 0
-        if omdb_json["imdbRating"]:
-            total += omdb_json["imdbRating"]
+        ratings = omdb_json["Ratings"]
+        if ratings[ReviewSources.IMDB.value]:
+            total += ratings[ReviewSources.IMDB.value]
             num_scores += 1
-        if omdb_json["Metascore"]:
-            total += omdb_json["Metascore"]
+        if ratings[ReviewSources.METACRITIC.value]:
+            total += ratings[ReviewSources.METACRITIC.value]
             num_scores += 1
-        if omdb_json["Rottenscore"]:
-            total += omdb_json["Rottenscore"]
+        if ratings[ReviewSources.ROTTEN_TOMATOES.value]:
+            total += ratings[ReviewSources.ROTTEN_TOMATOES.value]
             num_scores += 1
 
         total = total / num_scores if num_scores else None
