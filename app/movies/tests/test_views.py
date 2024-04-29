@@ -3,7 +3,6 @@ import json
 from unittest import mock
 
 import pytest
-
 from accounts.models import CustomUser
 from lists.models import Item, List
 from movies.models import Actor, Director, OnDemand
@@ -19,7 +18,7 @@ def test_get_single_movie(client):
         imdbid="test0987",
         title="Tester",
     )
-    resp = client.get(f"/api/movies/{movie.slug}/")
+    resp = client.get(f"/api/movies/{movie.slug}/", follow=False)
     assert resp.status_code == 200
     assert resp.data["title"] == "Tester"
     assert "-tester" in resp.data["slug"]
@@ -133,7 +132,7 @@ def test_get_queryset_filtered_by_2_genres(client):
     comedy_id = movie1.genre.get(name="comedy").id
     horror_id = movie2.genre.get(name="horror").id
 
-    resp = client.get(f"/api/movies/?g={comedy_id}&g={horror_id}")
+    resp = client.get(f"/api/movies/?g={comedy_id},{horror_id}")
     assert resp.status_code == 200
     assert "Funny Tests" in json.dumps(resp.data)
     assert "Scary Tests" in json.dumps(resp.data)
@@ -337,7 +336,7 @@ def test_get_queryset_filtered_by_all_criteria(client):
     horror_id = movie2.genre.get(name="horror").id
 
     resp = client.get(
-        f"/api/movies/?g={comedy_id}&g={horror_id}&dmin=1980&dmax=1990&rmin=90&rmax=150"
+        f"/api/movies/?g={comedy_id},{horror_id}&dmin=1980&dmax=1990&rmin=90&rmax=150"
     )
 
     assert resp.status_code == 200
