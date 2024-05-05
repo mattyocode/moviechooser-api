@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock
+from datetime import date
 
 import pytest
 from movies.utils import OMDBFetch
@@ -42,7 +42,7 @@ def test_format_reviews(omdb_instance):
 def test_released_to_date_format(omdb_instance):
     omdb_obj = {"Released": "01 Jul 2021"}
     output = omdb_instance.released_to_date_format(omdb_obj)
-    assert output == {"Released": "01-Jul-2021"}
+    assert output == {"Released": date(2021, 7, 1)}
 
 
 def test_released_to_date_format_with_NA(omdb_instance):

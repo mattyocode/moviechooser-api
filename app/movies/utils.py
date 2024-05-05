@@ -1,6 +1,7 @@
 import logging
 import os
 import re
+from datetime import date, datetime
 
 import requests
 from django.core.exceptions import ObjectDoesNotExist
@@ -36,6 +37,7 @@ def annotate_object_if_auth(request, movie):
 
 class OMDBFetch:
     """Class to handle fetching movie data for adding to DB."""
+
     SOURCE_NAME_MAPPING = {
         "Internet Movie Database": ReviewSources.IMDB.value,
         "Metacritic": ReviewSources.METACRITIC.value,
@@ -97,32 +99,12 @@ class OMDBFetch:
             omdb_json["Ratings"][review[0]] = review[1]
         return omdb_json
 
-    def add_ag_score(self, omdb_json):
-        total = 0
-        num_scores = 0
-        ratings = omdb_json["Ratings"]
-        if ratings[ReviewSources.IMDB.value]:
-            total += ratings[ReviewSources.IMDB.value]
-            num_scores += 1
-        if ratings[ReviewSources.METACRITIC.value]:
-            total += ratings[ReviewSources.METACRITIC.value]
-            num_scores += 1
-        if ratings[ReviewSources.ROTTEN_TOMATOES.value]:
-            total += ratings[ReviewSources.ROTTEN_TOMATOES.value]
-            num_scores += 1
-
-        total = total / num_scores if num_scores else None
-
-        if num_scores == 1:
-            total = total * 0.95
-        omdb_json["ag_score"] = round(total, 1)
-        return omdb_json
-
     def released_to_date_format(self, omdb_json):
         try:
             if omdb_json["Released"] != "N/A":
-                date_str = omdb_json["Released"]
-                omdb_json["Released"] = re.sub(" ", "-", date_str)
+                omdb_json["Released"] = datetime.strptime(
+                    omdb_json["Released"], "%d %b %Y"
+                ).date()
             else:
                 omdb_json["Released"] = None
         except KeyError:
@@ -138,6 +120,7 @@ class OMDBFetch:
             "Director",
             "Runtime",
             "Released",
+            "Plot",
         }
         actual_keys = set(omdb_json.keys())
         missing_keys = required_keys - actual_keys
@@ -157,7 +140,6 @@ class OMDBFetch:
         omdb_json = self.runtime_to_int(omdb_json)
         omdb_json = self.format_reviews(omdb_json)
         omdb_json = self.released_to_date_format(omdb_json)
-        omdb_json = self.add_ag_score(omdb_json)
         return omdb_json
 
     def get_data(self):
@@ -169,3 +151,18 @@ class OMDBFetch:
                 return formatted_response
         except (TypeError, IndexError) as e:
             log.error("Formatted data error: ", e)
+
+
+def get_imdbids_from_webpage(url):
+    # Make the HTTP request
+    response = requests.get(url)
+
+    # Check if the request was successful
+    if response.status_code == 200:
+        # Extract strings matching 'tt' followed by digits using regular expression
+        matches = set(re.findall(r"tt\d+", response.text))
+        return sorted(matches)  # Return sorted and unique matches
+    else:
+        # Print an error message if the request fails
+        log.error(f"{url}: HTTP request failed with status code {response.status_code}")
+        return []
