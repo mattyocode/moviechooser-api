@@ -1,0 +1,22 @@
+{
+  "configurations": [
+    {
+      "name": "Django Shell",
+      "type": "python",
+      "request": "launch",
+      "program": "${workspaceFolder}/manage.py",
+      "args": [
+          "shell"
+      ],
+    },
+    {
+      "name": "Python Debugger: Django",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}\\manage.py",
+      "args": ["runserver"],
+      "django": true,
+      "justMyCode": true
+    }
+  ]
+}
