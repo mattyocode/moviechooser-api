@@ -9,7 +9,7 @@ from lists.models import Item, List
 
 from .constants import ReviewSources
 
-log = logging.Logger(__name__)
+logger = logging.getLogger(__name__)
 
 
 OMDB_API_KEY = os.environ.get("OMDB_API_KEY")
@@ -55,7 +55,7 @@ class OMDBFetch:
                 if data["Response"] == "True":
                     return data
         except requests.RequestException as e:
-            log.error(f"Request failed for url {url}. Error: {e}")
+            logger.error(f"Request failed for url {url}. Error: {e}")
 
     def search_by_id(self):
 
@@ -92,7 +92,7 @@ class OMDBFetch:
                 )
 
             except (ValueError, KeyError) as e:
-                log.error(f"Error on {omdb_json['imdbID']}, {review}: {e}\n")
+                logger.error(f"Error on {omdb_json['imdbID']}, {review}: {e}\n")
 
         omdb_json["Ratings"] = {}
         for review in formatted_reviews:
@@ -151,7 +151,7 @@ class OMDBFetch:
                 raise ValueError(f"Required fields not present for {self.imdbid}")
             return formatted_response
         except (TypeError, IndexError, ValueError) as e:
-            log.error("Formatted data error: ", e)
+            logger.error("Formatted data error: ", e)
 
 
 def get_imdbids_from_webpage(url):
@@ -165,5 +165,5 @@ def get_imdbids_from_webpage(url):
         return sorted(matches)  # Return sorted and unique matches
     else:
         # Print an error message if the request fails
-        log.error(f"{url}: HTTP request failed with status code {response.status_code}")
+        logger.error(f"{url}: HTTP request failed with status code {response.status_code}")
         return []

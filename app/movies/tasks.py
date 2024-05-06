@@ -9,7 +9,7 @@ from django.db import transaction
 from .models import Actor, Director, Genre, Movie, Review
 from .utils import OMDBFetch, get_imdbids_from_webpage
 
-log = logging.Logger(__name__)
+logger = logging.getLogger(__name__)
 
 
 @transaction.atomic
@@ -63,9 +63,9 @@ def add_movies_to_db(imdbids):
         try:
             add_movie_to_db(imdbid)
         except Exception as e:
-            log.error(f"Failed to add {imdbid}")
+            logger.error(f"Failed to add {imdbid}")
         print(f"Added {imdbid} to DB.")
-        log.info(f"Successfully added {imdbid} to DB.")
+        logger.info(f"Successfully added {imdbid} to DB.")
         time.sleep(random.randint(1, 2))
 
 

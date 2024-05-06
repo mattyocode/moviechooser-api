@@ -221,7 +221,7 @@ LOGGING = {
             "handlers": ["console"],
             "level": "INFO",
         },
-        "myapp": {
+        "": {
             "handlers": ["debug_file", "info_file", "error_file"],
             "level": "DEBUG",
         },
