@@ -1,28 +1,17 @@
+import logging
 import random
 import time
 
-from django.db import transaction
 from celery import Task, chain
 from config.celery import app
+from django.db import transaction
 
 from .models import Actor, Director, Genre, Movie, Review
 from .utils import OMDBFetch, get_imdbids_from_webpage
 
-# from celery.utils.log import get_task_logger
+log = logging.Logger(__name__)
 
 
-# logger = get_task_logger(__name__)
-
-
-class DelayedTask(Task):
-    """Include a 1-2 second delay between requests to prevent rate limiting."""
-
-    def run(self, *args, **kwargs):
-        time.sleep(random.randint(1, 2))
-        return super().run(*args, **kwargs)
-
-
-@app.task(base=DelayedTask)
 @transaction.atomic
 def add_movie_to_db(imdbid):
     omdb_data = OMDBFetch(imdbid).get_data()
@@ -66,15 +55,22 @@ def add_movie_to_db(imdbid):
         Review.objects.create(movie=movie, source=source, score=score)
 
 
-def execute_tasks_sequentially(imdbids):
-    # Create a chain of tasks
-    task_chain = chain(add_movie_to_db.s(imdbid) for imdbid in imdbids)
-    # Execute the chain synchronously
-    result = task_chain.apply_async()
-    # Wait for the result
-    result.get()
+@app.task()
+def add_movies_to_db(imdbids):
+    """Task to add a list of movies to DB."""
+    # Execute tasks sequentially to prevent rate limiting.
+    for imdbid in imdbids:
+        try:
+            add_movie_to_db(imdbid)
+        except Exception as e:
+            log.error(f"Failed to add {imdbid}")
+        print(f"Added {imdbid} to DB.")
+        log.info(f"Successfully added {imdbid} to DB.")
+        time.sleep(random.randint(1, 2))
 
 
 def add_movies_from_url_to_db(url: str):
-    imdbids = get_imdbids_from_webpage(url)
-    execute_tasks_sequentially(imdbids)
+    new_movie_ids = set(get_imdbids_from_webpage(url))
+    current_ids = set(Movie.objects.all().values_list("imdbid", flat=True))
+    movies_to_add = new_movie_ids - current_ids
+    add_movies_to_db(list(movies_to_add))
