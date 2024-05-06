@@ -8,6 +8,6 @@ class ReviewSources(StrEnum):
     METACRITIC = "metacritic"
 
     @classmethod
-    def values(cls):
-        """Return list of values."""
-        return list(map(str, cls))
+    def choices(cls):
+        """Return list of values and names."""
+        return [(item.value, item.name) for item in cls]
