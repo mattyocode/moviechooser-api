@@ -147,9 +147,10 @@ class OMDBFetch:
             response = self.search_by_id()
             if self.check_keys_exist(response):
                 formatted_response = self.format_response_data(response)
-            if self.check_required_values_exist(formatted_response):
-                return formatted_response
-        except (TypeError, IndexError) as e:
+            if not self.check_required_values_exist(formatted_response):
+                raise ValueError(f"Required fields not present for {self.imdbid}")
+            return formatted_response
+        except (TypeError, IndexError, ValueError) as e:
             log.error("Formatted data error: ", e)
 
 
