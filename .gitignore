@@ -20,4 +20,6 @@ Dockerfile.local
 db_copy.json
 movies_data.json
 .deployscript
-/db_dump
+db_dump/
+log/
+moviedevbackup/
