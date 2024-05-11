@@ -18,19 +18,13 @@ OMDBID_URL = "http://www.omdbapi.com/?i={imdbid}&apikey={API_KEY}"
 
 def annotate_object_if_auth(request, movie):
     """
-    TODO: Annotate objects via queryset annotate method.
+    Add on_list field to movie object.
     """
-    # movie.avg_rating = movie.reviews.aggregate(avg_score=Avg("score"))["avg_score"]
     movie.on_list = False
 
     if request.user.is_authenticated:
-        try:
-            _list = List.objects.get(owner=request.user)
-            items = Item.objects.filter(_list=_list)
-            if items.filter(movie=movie).exists():
-                movie.on_list = True
-        except ObjectDoesNotExist:
-            pass
+        if Item.objects.filter(_list__owner=request.user, movie=movie):
+            movie.on_list = True
 
     return movie
 
@@ -165,5 +159,7 @@ def get_imdbids_from_webpage(url):
         return sorted(matches)  # Return sorted and unique matches
     else:
         # Print an error message if the request fails
-        logger.error(f"{url}: HTTP request failed with status code {response.status_code}")
+        logger.error(
+            f"{url}: HTTP request failed with status code {response.status_code}"
+        )
         return []

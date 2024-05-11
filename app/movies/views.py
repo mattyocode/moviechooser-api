@@ -23,11 +23,8 @@ class MovieList(ListAPIView):
     def get_queryset(self):
         movies_qs = Movie.objects.annotate(avg_rating=Avg("reviews__score"))
         if self.request.user.is_authenticated:
-            try:
-                items = Item.objects.filter(movie=OuterRef("pk"), _list__owner=self.request.user)
-                movies_qs = movies_qs.annotate(on_list=Exists(items))
-            except ObjectDoesNotExist:
-                pass
+            item = Item.objects.filter(movie=OuterRef("pk"), _list__owner=self.request.user)
+            movies_qs = movies_qs.annotate(on_list=Exists(item))
         else:
             movies_qs = movies_qs.annotate(on_list=Value(False))
 
@@ -44,7 +41,7 @@ class MovieList(ListAPIView):
 class MovieDetail(APIView):
     def get_object(self, slug):
         try:
-            return Movie.objects.get(slug=slug)
+            return Movie.objects.annotate(avg_rating=Avg("reviews__score")).get(slug=slug)
         except Movie.DoesNotExist:
             raise Http404
 
@@ -56,9 +53,16 @@ class MovieDetail(APIView):
 
 
 class RandomMovie(APIView):
+    def get_object(self, slug):
+        try:
+            return Movie.objects.annotate(avg_rating=Avg("reviews__score")).get(slug=slug)
+        except Movie.DoesNotExist:
+            raise Http404
+
     def get(self, request):
-        movies = list(Movie.objects.all())
-        movie = random.choice(movies)
+        movie_slugs = Movie.objects.values_list("slug", flat=True)
+        movie_slug = random.choice(movie_slugs)
+        movie = self.get_object(movie_slug)
         movie = annotate_object_if_auth(request, movie)
         serializer = MovieSerializer(movie)
         return Response(serializer.data)
