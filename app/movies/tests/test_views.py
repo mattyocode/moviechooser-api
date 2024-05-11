@@ -38,7 +38,7 @@ def test_get_random_movie(client, add_movie):
     movie_two = MovieFactory(
         title="Test 2: Revenge of the Test",
     )
-    with mock.patch("random.choice", return_value=movie_two):
+    with mock.patch("random.choice", return_value=movie_two.slug):
         resp = client.get("/api/movies/random/")
         assert resp.status_code == 200
         assert "Revenge" in json.dumps(resp.data)
