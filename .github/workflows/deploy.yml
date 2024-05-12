@@ -164,7 +164,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: AWS authenticate and run script
-        uses: appleboy/ssh-action@master
+        uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.AWS_HOST }}
           username: ${{ secrets.AWS_USERNAME }}
