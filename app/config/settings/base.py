@@ -220,7 +220,7 @@ LOGGING = {
             "level": "INFO",
         },
         "": {
-            "handlers": ["debug_file", "info_file", "error_file"],
+            "handlers": ["debug_file", "info_file", "error_file", "console"],
             "level": "DEBUG",
         },
     },
