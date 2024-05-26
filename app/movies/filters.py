@@ -20,7 +20,9 @@ class MovieFilter(filters.FilterSet):
         runtime_offset_if_equal = 3
 
         if data and "rmin" in data and "rmax" in data:
-            if data["rmin"] == data["rmax"] and not self._is_boundary_runtime(data["rmin"]):
+            if data["rmin"] == data["rmax"] and not self._is_boundary_runtime(
+                data["rmin"]
+            ):
                 rmin = int(data["rmin"]) - runtime_offset_if_equal
                 rmax = int(data["rmax"]) + runtime_offset_if_equal
                 data = {**data, "rmin": str(rmin), "rmax": str(rmax)}
@@ -57,7 +59,7 @@ class MovieFilter(filters.FilterSet):
                 value = 74
             return queryset.filter(runtime__lte=value)
         return queryset
-    
+
     def _is_boundary_runtime(self, value: str) -> bool:
         """Check if param is the upper or lower limit, e.g. starts with < or >."""
         if value.startswith("<") or value.startswith(">"):
