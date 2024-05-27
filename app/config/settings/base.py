@@ -185,43 +185,43 @@ CELERY_TASK_TRACK_STARTED = True
 CELERY_TASK_TIME_LIMIT = 30 * 60
 CELERY_IMPORTS = ("movies.tasks",)
 
-
-LOGGING = {
-    "version": 1,
-    "disable_existing_loggers": False,
-    "handlers": {
-        "console": {
-            "level": "DEBUG",
-            "class": "logging.StreamHandler",
+if not DEBUG:
+    LOGGING = {
+        "version": 1,
+        "disable_existing_loggers": False,
+        "handlers": {
+            "console": {
+                "level": "DEBUG",
+                "class": "logging.StreamHandler",
+            },
+            "debug_file": {
+                "level": "DEBUG",
+                "class": "logging.FileHandler",
+                "filename": os.path.join(APP_BASE_DIR, "log/debug.log"),
+            },
+            "info_file": {
+                "level": "INFO",
+                "class": "logging.FileHandler",
+                "filename": os.path.join(APP_BASE_DIR, "log/info.log"),
+            },
+            "error_file": {
+                "level": "ERROR",
+                "class": "logging.FileHandler",
+                "filename": os.path.join(APP_BASE_DIR, "log/error.log"),
+            },
         },
-        "debug_file": {
-            "level": "DEBUG",
-            "class": "logging.FileHandler",
-            "filename": os.path.join(APP_BASE_DIR, "log/debug.log"),
-        },
-        "info_file": {
-            "level": "INFO",
-            "class": "logging.FileHandler",
-            "filename": os.path.join(APP_BASE_DIR, "log/info.log"),
-        },
-        "error_file": {
-            "level": "ERROR",
-            "class": "logging.FileHandler",
-            "filename": os.path.join(APP_BASE_DIR, "log/error.log"),
-        },
-    },
-    "root": {
-        "handlers": ["console"],
-        "level": "WARNING",
-    },
-    "loggers": {
-        "django": {
+        "root": {
             "handlers": ["console"],
-            "level": "INFO",
+            "level": "WARNING",
         },
-        "": {
-            "handlers": ["debug_file", "info_file", "error_file", "console"],
-            "level": "DEBUG",
+        "loggers": {
+            "django": {
+                "handlers": ["console"],
+                "level": "INFO",
+            },
+            "": {
+                "handlers": ["debug_file", "info_file", "error_file", "console"],
+                "level": "DEBUG",
+            },
         },
-    },
-}
+    }
