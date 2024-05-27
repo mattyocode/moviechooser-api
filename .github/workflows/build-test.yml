@@ -146,17 +146,12 @@ jobs:
           docker run -d -p 8000:8000 -e SECRET_KEY="$SECRET_KEY" \
             --name latest_image ${{ env.WEB_IMAGE }}:"${{ env.BRANCH_REF}}"
 
-      - name: Run tests with pytest
-        run: docker run -m 2g -u root -e DEBUG=1 latest_image pytest -vv -p no:cacheprovider -p no:warnings --cov=.
-      
-      - name: Run flake8
-        run: docker run -m 2g -u root latest_image flake8
-      
-      - name: Run black
-        run: docker run -m 2g -u root latest_image black --check --exclude=migrations .
-      
-      - name: Run isort
-        run: docker run -m 2g -u root latest_image isort . --check-only
+      - name: Run tests
+        run: |
+          docker exec -u root -e DEBUG=1 latest_image pytest -vv -p no:cacheprovider -p no:warnings --cov=.
+          docker exec -u root latest_image flake8
+          docker exec -u root latest_image black --check --exclude=migrations .
+          docker exec -u root latest_image isort . --check-only
 
       - name: Run django tests
         env:
