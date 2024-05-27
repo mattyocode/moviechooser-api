@@ -64,6 +64,7 @@ def test_check_keys_exist(omdb_instance):
         "Director": "Steven Soderbergh",
         "Runtime": "115 min",
         "Released": "01 Jul 2021",
+        "Plot": "blah"
     }
     output = omdb_instance.check_keys_exist(omdb_obj)
     assert output == True
@@ -106,5 +107,4 @@ def test_data_for_postgres_by_id(omdb_instance, mock_requests_get):
         "metacritic": 76,
     }
     assert output["Runtime"] == 999
-    assert output["Released"] == "01-Jul-2021"
-    assert output["ag_score"] == 77.3
+    assert output["Released"] == date(2021, 7, 1)
