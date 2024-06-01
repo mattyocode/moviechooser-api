@@ -1,4 +1,4 @@
-FROM python:3.9.5-slim-buster
+FROM python:3.11-slim-bullseye
 
 WORKDIR /app
 
@@ -8,7 +8,7 @@ ENV PYTHONUNBUFFERED 1
 ENV PIP_NO_CACHE_DIR off
 ENV PIP_DISABLE_PIP_VERSION_CHECK on
 ENV PIP_DEFAULT_TIMEOUT=100
-ENV POETRY_VERSION 1.0.0
+ENV POETRY_VERSION 1.8.0
 ARG SECRET_KEY=runtimetempsecretkey
 
 # install system deps
