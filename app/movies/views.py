@@ -3,11 +3,12 @@ import random
 from django.db.models import Avg, Count
 from django.db.models.expressions import Exists, OuterRef, Value
 from django.http import Http404
-from lists.models import Item
-from movies.utils import annotate_object_if_auth
 from rest_framework.generics import ListAPIView
 from rest_framework.response import Response
 from rest_framework.views import APIView
+
+from lists.models import Item
+from movies.utils import annotate_object_if_auth
 
 from .filters import MovieFilter
 from .models import Genre, Movie

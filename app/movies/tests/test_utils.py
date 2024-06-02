@@ -1,6 +1,7 @@
 from datetime import date
 
 import pytest
+
 from movies.utils import OMDBFetch
 
 

@@ -2,8 +2,9 @@ import logging
 import random
 import time
 
-from config.celery import app
 from django.db import transaction
+
+from config.celery import app
 
 from .models import Actor, Director, Genre, Movie, Review
 from .utils import OMDBFetch, get_imdbids_from_webpage

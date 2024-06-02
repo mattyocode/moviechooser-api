@@ -3,6 +3,7 @@ import json
 from unittest import mock
 
 import pytest
+
 from accounts.models import CustomUser
 from lists.models import Item, List
 from movies.models import Actor, Director, OnDemand

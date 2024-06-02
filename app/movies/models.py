@@ -1,7 +1,8 @@
-from config.util import unique_slug
 from django.db import models
 from django.db.models.signals import pre_save
 from django.dispatch import receiver
+
+from config.util import unique_slug
 
 from .constants import ReviewSources
 

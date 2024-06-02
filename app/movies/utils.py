@@ -4,6 +4,7 @@ import re
 from datetime import datetime
 
 import requests
+
 from lists.models import Item
 
 from .constants import ReviewSources

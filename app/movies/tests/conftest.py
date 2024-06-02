@@ -1,6 +1,7 @@
 import pytest
-from movies.models import Movie
 from pytest_factoryboy import register
+
+from movies.models import Movie
 
 from .factories import GenreFactory, MovieFactory
 
