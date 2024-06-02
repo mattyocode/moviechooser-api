@@ -1,15 +1,13 @@
 import random
 
-from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import Avg, Count
 from django.db.models.expressions import Exists, OuterRef, Value
 from django.http import Http404
+from lists.models import Item
+from movies.utils import annotate_object_if_auth
 from rest_framework.generics import ListAPIView
 from rest_framework.response import Response
 from rest_framework.views import APIView
-
-from lists.models import Item, List
-from movies.utils import annotate_object_if_auth
 
 from .filters import MovieFilter
 from .models import Genre, Movie
@@ -23,7 +21,9 @@ class MovieList(ListAPIView):
     def get_queryset(self):
         movies_qs = Movie.objects.annotate(avg_rating=Avg("reviews__score"))
         if self.request.user.is_authenticated:
-            item = Item.objects.filter(movie=OuterRef("pk"), _list__owner=self.request.user)
+            item = Item.objects.filter(
+                movie=OuterRef("pk"), _list__owner=self.request.user
+            )
             movies_qs = movies_qs.annotate(on_list=Exists(item))
         else:
             movies_qs = movies_qs.annotate(on_list=Value(False))
@@ -41,7 +41,9 @@ class MovieList(ListAPIView):
 class MovieDetail(APIView):
     def get_object(self, slug):
         try:
-            return Movie.objects.annotate(avg_rating=Avg("reviews__score")).get(slug=slug)
+            return Movie.objects.annotate(avg_rating=Avg("reviews__score")).get(
+                slug=slug
+            )
         except Movie.DoesNotExist:
             raise Http404
 
@@ -55,7 +57,9 @@ class MovieDetail(APIView):
 class RandomMovie(APIView):
     def get_object(self, slug):
         try:
-            return Movie.objects.annotate(avg_rating=Avg("reviews__score")).get(slug=slug)
+            return Movie.objects.annotate(avg_rating=Avg("reviews__score")).get(
+                slug=slug
+            )
         except Movie.DoesNotExist:
             raise Http404
 

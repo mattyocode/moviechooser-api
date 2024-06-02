@@ -3,6 +3,7 @@ from enum import StrEnum
 
 class ReviewSources(StrEnum):
     """Review source string representations."""
+
     IMDB = "imdb"
     ROTTEN_TOMATOES = "rotten_toms"
     METACRITIC = "metacritic"

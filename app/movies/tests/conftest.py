@@ -1,5 +1,3 @@
-from unittest.mock import Mock
-
 import pytest
 from movies.models import Movie
 from pytest_factoryboy import register
@@ -38,11 +36,14 @@ def mock_requests_get(mocker):
         "Director": "Steven Soderbergh",
         "Writer": "Ed Solomon",
         "Actors": "Don Cheadle, Benicio Del Toro, David Harbour",
-        "Plot": "A group of criminals are brought together under mysterious circumstances and have to work together to uncover what's really going on when their simple job goes completely sideways.",
+        "Plot": "A group of criminals are brought together under mysterious circumstances \
+            and have to work together to uncover what's really going on when their simple \
+            job goes completely sideways.",
         "Language": "English",
         "Country": "United States",
         "Awards": "N/A",
-        "Poster": "https://m.media-amazon.com/images/M/MV5BNWI2ZDQxZDQtZDMxZi00ZWFhLTg1OGYtYmFkMjRkMDc2NDNkXkEyXkFqcGdeQXVyMTkxNjUyNQ@@._V1_SX300.jpg",
+        "Poster": "https://m.media-amazon.com/images/M/MV5BNWI2ZDQxZDQtZDMxZi00ZWFhLTg1OGYtYmFk\
+            MjRkMDc2NDNkXkEyXkFqcGdeQXVyMTkxNjUyNQ@@._V1_SX300.jpg",
         "Ratings": [
             {"Source": "Internet Movie Database", "Value": "6.5/10"},
             {"Source": "Rotten Tomatoes", "Value": "91%"},

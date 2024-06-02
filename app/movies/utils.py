@@ -1,11 +1,10 @@
 import logging
 import os
 import re
-from datetime import date, datetime
+from datetime import datetime
 
 import requests
-from django.core.exceptions import ObjectDoesNotExist
-from lists.models import Item, List
+from lists.models import Item
 
 from .constants import ReviewSources
 
@@ -124,7 +123,7 @@ class OMDBFetch:
 
     def check_required_values_exist(self, omdb_json):
         required_fields = ["Genre", "Director", "Plot", "Released"]
-        if (any(omdb_json[field] == None for field in required_fields)) or (
+        if (any(omdb_json[field] is None for field in required_fields)) or (
             any(omdb_json[field] == "N/A" for field in required_fields)
         ):
             return False
@@ -151,7 +150,8 @@ class OMDBFetch:
 def get_imdbids_from_webpage(url):
     # Make the HTTP request
     headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36"
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36"
     }
     response = requests.get(url, headers=headers)
 

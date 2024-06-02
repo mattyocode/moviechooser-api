@@ -2,7 +2,6 @@ import logging
 import random
 import time
 
-from celery import Task, chain
 from config.celery import app
 from django.db import transaction
 
@@ -63,7 +62,7 @@ def add_movies_to_db(imdbids):
         try:
             add_movie_to_db(imdbid)
         except Exception as e:
-            logger.error(f"Failed to add {imdbid}")
+            logger.error(f"Failed to add {imdbid}: {e}")
         print(f"Added {imdbid} to DB.")
         logger.info(f"Successfully added {imdbid} to DB.")
         time.sleep(random.randint(1, 2))

@@ -24,20 +24,17 @@ def test_runtime_to_int_without_runtime_in_data(omdb_instance):
 
 def test_format_reviews(omdb_instance):
     omdb_obj = {
-        "imdbID":"tt2582496",
+        "imdbID": "tt2582496",
         "Ratings": [
             {"Source": "Internet Movie Database", "Value": "6.5/10"},
             {"Source": "Rotten Tomatoes", "Value": "91%"},
             {"Source": "Metacritic", "Value": "76/100"},
-        ]
+        ],
     }
     output = omdb_instance.format_reviews(omdb_obj)
-    expected_output = {
-        "imdb": 65,
-        "rotten_toms": 91,
-        "metacritic": 76
-    }
+    expected_output = {"imdb": 65, "rotten_toms": 91, "metacritic": 76}
     assert output["Ratings"] == expected_output
+
 
 def test_released_to_date_format(omdb_instance):
     omdb_obj = {"Released": "01 Jul 2021"}
@@ -64,16 +61,16 @@ def test_check_keys_exist(omdb_instance):
         "Director": "Steven Soderbergh",
         "Runtime": "115 min",
         "Released": "01 Jul 2021",
-        "Plot": "blah"
+        "Plot": "blah",
     }
     output = omdb_instance.check_keys_exist(omdb_obj)
-    assert output == True
+    assert output is True
 
 
 def test_check_keys_exists_raises_KeyError(omdb_instance):
     omdb_obj = {}
     output = omdb_instance.check_keys_exist(omdb_obj)
-    assert output == False
+    assert output is False
 
 
 def test_check_values(omdb_instance):
@@ -85,7 +82,7 @@ def test_check_values(omdb_instance):
         "Plot": "A group of criminals are brought together...",
     }
     output = omdb_instance.check_required_values_exist(omdb_obj)
-    assert output == True
+    assert output is True
 
 
 def test_check_values_returns_false(omdb_instance):
@@ -96,7 +93,7 @@ def test_check_values_returns_false(omdb_instance):
         "Plot": "A group of criminals are brought together...",
     }
     output = omdb_instance.check_required_values_exist(omdb_obj)
-    assert output == False
+    assert output is False
 
 
 def test_data_for_postgres_by_id(omdb_instance, mock_requests_get):
