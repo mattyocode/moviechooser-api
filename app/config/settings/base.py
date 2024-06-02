@@ -135,6 +135,8 @@ ACCOUNT_EMAIL_REQUIRED = True
 
 # Rest Framework settings
 
+ANON_RATE_LIMIT = "500/day" if DEBUG else "50/day"
+
 REST_FRAMEWORK = {
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 30,
@@ -147,7 +149,7 @@ REST_FRAMEWORK = {
         "rest_framework.throttling.AnonRateThrottle",
         "rest_framework.throttling.UserRateThrottle",
     ],
-    "DEFAULT_THROTTLE_RATES": {"anon": "50/day", "user": "1000/day"},
+    "DEFAULT_THROTTLE_RATES": {"anon": ANON_RATE_LIMIT, "user": "1000/day"},
 }
 
 SECRET_SIGNING_KEY = os.environ.get("SECRET_KEY")
