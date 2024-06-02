@@ -147,6 +147,8 @@ jobs:
             --name latest_image ${{ env.WEB_IMAGE }}:"${{ env.BRANCH_REF}}"
 
       - name: Run tests
+        env:
+          DEBUG: 1
         run: |
           docker exec -u root -e DEBUG=1 latest_image pytest -vv -p no:cacheprovider -p no:warnings --cov=.
           docker exec -u root latest_image flake8
