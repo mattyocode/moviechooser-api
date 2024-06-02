@@ -1,5 +1,6 @@
 import datetime
 import json
+import os
 from unittest import mock
 
 import pytest
@@ -382,6 +383,11 @@ def test_get_genre_queryset_filtered_by_number_of_movies_most_entries_first(clie
     MovieWithGenreFactory.create(title="Funny 2 Tests", genre=["comedy"], runtime=150)
     MovieWithGenreFactory.create(title="Funny 3 Tests", genre=["comedy"], runtime=90)
     MovieWithGenreFactory.create(title="Scary 2 Tests", genre=["horror"], runtime=120)
+
+    DEBUG = int(os.environ.get("DEBUG", default=0))
+    print("DEBUG with default", DEBUG)
+    DEBUG = int(os.environ.get("DEBUG"))
+    print("DEBUG without default", DEBUG)
 
     resp = client.get("/api/genres/")
 
