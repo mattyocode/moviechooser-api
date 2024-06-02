@@ -33,6 +33,7 @@ class MovieFactory(factory.django.DjangoModelFactory):
     runtime = fuzzy.FuzzyInteger(50, 200)
     writer = fuzzy.FuzzyText(length=10, suffix="writer")
     poster_url = fuzzy.FuzzyText(length=10, prefix="www.", suffix="img.jpg")
+    slug = factory.Sequence(lambda n: "slug%s" % n)
 
     class Meta:
         model = Movie

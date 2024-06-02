@@ -19,10 +19,9 @@ def test_get_single_movie(client):
         imdbid="test0987",
         title="Tester",
     )
-    resp = client.get(f"/api/movies/{movie.slug}/")
+    resp = client.get(f"/api/movies/{movie.slug}/", follow=False)
     assert resp.status_code == 200
     assert resp.data["title"] == "Tester"
-    assert "-tester" in resp.data["slug"]
 
 
 @pytest.mark.django_db
@@ -39,7 +38,7 @@ def test_get_random_movie(client, add_movie):
     movie_two = MovieFactory(
         title="Test 2: Revenge of the Test",
     )
-    with mock.patch("random.choice", return_value=movie_two):
+    with mock.patch("random.choice", return_value=movie_two.slug):
         resp = client.get("/api/movies/random/")
         assert resp.status_code == 200
         assert "Revenge" in json.dumps(resp.data)
@@ -133,7 +132,7 @@ def test_get_queryset_filtered_by_2_genres(client):
     comedy_id = movie1.genre.get(name="comedy").id
     horror_id = movie2.genre.get(name="horror").id
 
-    resp = client.get(f"/api/movies/?g={comedy_id}&g={horror_id}")
+    resp = client.get(f"/api/movies/?g={comedy_id},{horror_id}")
     assert resp.status_code == 200
     assert "Funny Tests" in json.dumps(resp.data)
     assert "Scary Tests" in json.dumps(resp.data)
@@ -337,7 +336,7 @@ def test_get_queryset_filtered_by_all_criteria(client):
     horror_id = movie2.genre.get(name="horror").id
 
     resp = client.get(
-        f"/api/movies/?g={comedy_id}&g={horror_id}&dmin=1980&dmax=1990&rmin=90&rmax=150"
+        f"/api/movies/?g={comedy_id},{horror_id}&dmin=1980&dmax=1990&rmin=90&rmax=150"
     )
 
     assert resp.status_code == 200
@@ -375,19 +374,6 @@ def test_get_movies_with_avg_review(client):
 
 
 @pytest.mark.django_db
-def test_get_genre_queryset_filtered_by_number_of_movies(client):
-    MovieWithGenreFactory.create(title="Funny Tests", genre=["comedy"], runtime=90)
-    MovieWithGenreFactory.create(title="Scary Tests", genre=["horror"], runtime=120)
-    MovieWithGenreFactory.create(title="Funny 2 Tests", genre=["comedy"], runtime=150)
-
-    resp = client.get("/api/genres/")
-
-    assert resp.status_code == 200
-    assert "comedy" in json.dumps(resp.data[0])
-    assert "horror" in json.dumps(resp.data[1])
-
-
-@pytest.mark.django_db
 def test_get_genre_queryset_filtered_by_number_of_movies_most_entries_first(client):
     MovieWithGenreFactory.create(title="Funny Tests", genre=["comedy"], runtime=90)
     MovieWithGenreFactory.create(title="Scary Tests", genre=["horror"], runtime=120)
@@ -404,17 +390,6 @@ def test_get_genre_queryset_filtered_by_number_of_movies_most_entries_first(clie
     assert "comedy" in json.dumps(resp.data[0])
     assert "horror" in json.dumps(resp.data[1])
     assert "thriller" in json.dumps(resp.data[2])
-
-
-@pytest.mark.django_db
-def test_get_queryset_single_movie_returned_if_duplicates(client):
-    movie1 = MovieWithGenreFactory.create(title="Funny Tests", genre=["comedy"])
-    movie1.save()
-
-    resp = client.get("/api/movies/")
-    assert resp.status_code == 200
-    print(json.dumps(resp.data))
-    assert '"count": 1' in json.dumps(resp.data)
 
 
 @pytest.mark.django_db

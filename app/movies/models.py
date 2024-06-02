@@ -4,6 +4,8 @@ from django.dispatch import receiver
 
 from config.util import unique_slug
 
+from .constants import ReviewSources
+
 
 class Actor(models.Model):
     name = models.CharField(unique=True, max_length=100)
@@ -41,11 +43,9 @@ class Movie(models.Model):
     language = models.CharField(max_length=500, null=True)
     country = models.CharField(max_length=500, null=True)
     poster_url = models.CharField(max_length=200)
-    type_field = models.CharField(db_column="type_", max_length=12, null=True)
-
-    # @property
-    # def average_rating(self):
-    #     return self.reviews.aggregate(avg_score=Avg('score'))['avg_score']
+    type_field = models.CharField(
+        db_column="type_", max_length=12, null=True, default="movie"
+    )
 
     def __str__(self):
         return f"{self.title}"
@@ -70,7 +70,7 @@ class OnDemand(models.Model):
 
 class Review(models.Model):
     movie = models.ForeignKey(Movie, on_delete=models.CASCADE, related_name="reviews")
-    source = models.CharField(max_length=50)
+    source = models.CharField(max_length=50, choices=ReviewSources.choices())
     score = models.IntegerField(null=False)
 
     def __str__(self):
