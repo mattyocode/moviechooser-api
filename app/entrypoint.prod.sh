@@ -11,7 +11,8 @@ then
     echo "PostgreSQL started"
 fi
 
-# mkdir /log
+mkdir /log
+mkdir /logs
 # # List of files to create if they don't exist
 # files=("/log/debug.log" "/log/error.log" "/log/info.log")
 
