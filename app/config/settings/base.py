@@ -135,7 +135,7 @@ ACCOUNT_EMAIL_REQUIRED = True
 
 # Rest Framework settings
 
-ANON_RATE_LIMIT = "500/day" if DEBUG else "50/day"
+ANON_RATE_LIMIT = "500/day" if DEBUG else "100/day"
 
 REST_FRAMEWORK = {
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
