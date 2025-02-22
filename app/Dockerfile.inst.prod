@@ -1,7 +1,7 @@
 # syntax = docker/dockerfile:1.2
 
 # Pull base image
-FROM python:3.9.5-slim-buster
+FROM python:3.11-slim-bullseye
 
 # set environment variables
 ENV PYTHONDONTWRITEBYTECODE 1
@@ -43,6 +43,12 @@ COPY ./entrypoint.prod.sh /app/entrypoint.prod.sh
 RUN ["chmod", "+x", "/app/entrypoint.prod.sh"]
 
 COPY . .
+
+# Create log file
+RUN mkdir -p /app/log \
+    && touch /app/log/debug.log \
+    && touch /app/log/error.log \
+    && touch /app/log/info.log
 
 # collect static files
 RUN python manage.py collectstatic --noinput
