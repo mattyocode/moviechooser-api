@@ -8,6 +8,8 @@ env
 fixtures/
 .env
 .env.prod
+.env.prod.db
+.env.staging.db
 Dockerfile.local
 docker-compose.prev.yml
 docker-compose.dev.yml
