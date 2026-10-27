@@ -156,7 +156,11 @@ REST_FRAMEWORK = {
         "rest_framework.throttling.AnonRateThrottle",
         "rest_framework.throttling.UserRateThrottle",
     ],
-    "DEFAULT_THROTTLE_RATES": {"anon": ANON_RATE_LIMIT, "user": "1000/day"},
+    "DEFAULT_THROTTLE_RATES": {
+        "anon": ANON_RATE_LIMIT,
+        "user": "1000/day",
+        "movie_count": "2000/day",
+    },
 }
 
 SECRET_SIGNING_KEY = os.environ.get("SECRET_KEY")

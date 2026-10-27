@@ -538,3 +538,34 @@ def test_get_single_movie_not_authed(client):
     assert resp.status_code == 200
     assert resp.data["title"] == other_movie.title
     assert resp.data["on_list"] is False
+
+
+@pytest.mark.django_db
+def test_movie_count_matches_filtered_list(client):
+    movie1 = MovieWithGenreFactory.create(title="Funny Tests", genre=["comedy"])
+    MovieWithGenreFactory.create(title="Funny Tests 2", genre=["comedy"])
+    MovieWithGenreFactory.create(title="Scary Tests", genre=["horror"])
+
+    comedy_id = movie1.genre.get(name="comedy").id
+
+    count_resp = client.get(f"/api/movies/count/?g={comedy_id}")
+    list_resp = client.get(f"/api/movies/?g={comedy_id}")
+    assert count_resp.status_code == 200
+    assert count_resp.data == {"count": list_resp.data["count"]}
+
+
+@pytest.mark.django_db
+def test_movie_count_unfiltered_counts_all(client):
+    MovieWithGenreFactory.create(title="One", genre=["comedy"])
+    MovieWithGenreFactory.create(title="Two", genre=["horror"])
+
+    resp = client.get("/api/movies/count/")
+    list_resp = client.get("/api/movies/")
+    assert resp.status_code == 200
+    assert resp.data["count"] == list_resp.data["count"]
+
+
+def test_movie_count_uses_its_own_throttle_scope():
+    from movies.views import MovieCount
+
+    assert MovieCount.throttle_scope == "movie_count"

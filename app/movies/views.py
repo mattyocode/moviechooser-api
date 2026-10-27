@@ -5,6 +5,7 @@ from django.db.models.expressions import Exists, OuterRef, Value
 from django.http import Http404
 from rest_framework.generics import ListAPIView
 from rest_framework.response import Response
+from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 
 from lists.models import Item
@@ -13,6 +14,17 @@ from movies.utils import annotate_object_if_auth
 from .filters import MovieFilter
 from .models import Genre, Movie
 from .serializers import GenreSerializer, MovieSerializer
+
+
+def filter_movies(params, queryset):
+    """Apply the search filters and the catalogue's quality cut-offs."""
+    filterset = MovieFilter(params, queryset=queryset)
+    return (
+        filterset.qs.order_by("-avg_rating")
+        .distinct()
+        .filter(avg_rating__gte=40)
+        .exclude(poster_url="N/A")
+    )
 
 
 class MovieList(ListAPIView):
@@ -29,14 +41,20 @@ class MovieList(ListAPIView):
         else:
             movies_qs = movies_qs.annotate(on_list=Value(False))
 
-        filterset = self.filterset_class(self.request.GET, queryset=movies_qs)
+        return filter_movies(self.request.GET, movies_qs)
 
-        return (
-            filterset.qs.order_by("-avg_rating")
-            .distinct()
-            .filter(avg_rating__gte=40)
-            .exclude(poster_url="N/A")
-        )
+
+class MovieCount(APIView):
+    """Number of movies matching the search filters, for live counts as the
+    user edits filters. Throttled on its own scope so it doesn't use up the
+    anonymous allowance needed for real searches."""
+
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "movie_count"
+
+    def get(self, request):
+        movies_qs = Movie.objects.annotate(avg_rating=Avg("reviews__score"))
+        return Response({"count": filter_movies(request.GET, movies_qs).count()})
 
 
 class MovieDetail(APIView):
