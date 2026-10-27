@@ -25,3 +25,4 @@ movies_data.json
 db_dump/
 log/
 moviedevbackup/
+app/config/staticfiles/
