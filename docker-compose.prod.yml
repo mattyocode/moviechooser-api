@@ -13,6 +13,22 @@ services:
       - "8000"
     env_file:
       - ./app/.env.prod
+    depends_on:
+      mc-prod-db:
+        condition: service_healthy
+
+  mc-prod-db:
+    image: pgvector/pgvector:pg16
+    restart: always
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    env_file:
+      - ./app/.env.prod.db
+    healthcheck:
+      test: pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB
+      interval: 10s
+      timeout: 3s
+      retries: 3
 
   nginx-proxy:
     container_name: nginx-proxy
@@ -46,6 +62,7 @@ services:
       - nginx-proxy
 
 volumes:
+  postgres_data:
   static_volume:
   media_volume:
   certs:

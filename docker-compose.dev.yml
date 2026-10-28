@@ -28,7 +28,7 @@ services:
       - _OUTPUT_DIR=/etc/nginx
 
   mc-dev-db:
-    image: postgres:15-alpine
+    image: pgvector/pgvector:pg16
     container_name: mc-dev-db
     volumes:
       - postgres_data:/var/lib/postgresql/data

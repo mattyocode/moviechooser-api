@@ -28,7 +28,7 @@ def test_send_pw_reset_email_user_exists(client, mock_recaptcha_submit):
         args = mock_send_mail.call_args.kwargs
         assert "Reset your password" in str(args)
         assert "standard@user.com" in args["recipient_list"][0]
-        assert mock_recaptcha_submit.called_once()
+        mock_recaptcha_submit.assert_called_once()
 
 
 @pytest.mark.django_db
@@ -48,7 +48,7 @@ def test_dont_send_pw_reset_email_user_doesnt_exist(client, mock_recaptcha_submi
         assert resp.status_code == 200
         assert resp.data["success"] == "Reset password email sent if account exists"
         assert mock_send_mail.call_count == 0
-        assert mock_recaptcha_submit.called_once()
+        mock_recaptcha_submit.assert_called_once()
 
 
 @pytest.mark.django_db
@@ -65,7 +65,7 @@ def test_dont_send_pw_reset_email_bad_recaptcha(client, mock_recaptcha_fail):
         assert resp.status_code == 200
         assert resp.data["success"] == "Reset password email sent if account exists"
         assert mock_send_mail.call_count == 0
-        assert mock_recaptcha_fail.called_once()
+        mock_recaptcha_fail.assert_called_once()
 
 
 @pytest.mark.django_db

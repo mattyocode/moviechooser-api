@@ -68,7 +68,7 @@ def test_register_successfully(client, mock_recaptcha_submit):
     assert "standard@user.com" in resp.data["user"]["email"]
     assert "user1" in resp.data["user"]["username"]
     assert "testpw1234" not in json.dumps(resp.data)
-    assert mock_recaptcha_submit.called_once()
+    mock_recaptcha_submit.assert_called_once()
 
 
 @pytest.mark.django_db

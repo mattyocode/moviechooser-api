@@ -4,26 +4,29 @@ A Dockerized Django REST Framework project that provides endpoints for movie dat
 
 ## Tech stack
 
-- Python
+- Python 3.12
 - Django REST Framework
 - Gunicorn
 - Nginx
-- Poetry
+- Poetry 2.x
 - PyTest
 - Flake8 / Black
 - Docker / Docker Compose
 - Github Actions (CI/CD)
-- PostgreSQL
+- PostgreSQL 16 with pgvector (`pgvector/pgvector:pg16`)
 
 ## Deployment
 
-The Dockerized app is deployed to an AWS Lightsail instance via Github Actions. The database is also hosted on Lightsail.
+The Dockerized app is deployed to an AWS Lightsail instance via Github Actions. The database runs on the same instance as a `pgvector/pgvector:pg16` container (`mc-prod-db` in `docker-compose.prod.yml`, `mc-staging-db` for staging), reachable only on the Compose network. Its credentials live in `app/.env.prod.db` (see `app/.env.db.example`).
+
+Lightsail's managed-database backups no longer apply, so back up with `pg_dump`. See [docs/db-cutover.md](docs/db-cutover.md) for the migration from the old Lightsail-hosted database, rollback and backups.
 
 ## Requirements
 
-- python = "^3.9"
-- Django = "3.2.7"
-- Django REST Framework = "3.12.4"
+- python = "3.12"
+- Django = "5.0.11"
+- Django REST Framework = "3.15.1"
+- Poetry = "^2.5"
 - Docker = “^20.10”
 - Docker Compose = “^1.29”
 
@@ -48,6 +51,16 @@ The Dockerized app is deployed to an AWS Lightsail instance via Github Actions. 
 
    ```bash
    docker-compose -f docker-compose.dev.yml up -d --build
+   ```
+
+   **Upgrading from an older local database:** the dev DB is now Postgres 16, which cannot start on an existing Postgres 15 `postgres_data` volume. Before pulling this change, dump your data. Then remove the volume, start the new DB and restore:
+
+   ```bash
+   docker-compose -f docker-compose.dev.yml exec mc-dev-db pg_dump -U movies -d mc_dev -Fc -f /dump/mc_dev_pg15.dump
+   docker-compose -f docker-compose.dev.yml down
+   docker volume rm moviechooser-api_postgres_data
+   docker-compose -f docker-compose.dev.yml up -d mc-dev-db
+   docker-compose -f docker-compose.dev.yml exec mc-dev-db pg_restore -U movies -d mc_dev --no-owner /dump/mc_dev_pg15.dump
    ```
 
 5. Run tests in Docker container
@@ -162,6 +175,6 @@ def test_get_queryset_filtered_by_runtime_range_incl_gt(client):
 
 ## Challenges and Improvements
 
-Setting up an effective deployment pipeline to an AWS Lightsail instance (chosen to provide predictable costing) was one of the stand out challenges. In particular, successfully setting up the Nginx reverse proxy and Let’s Encrypt SSL certbot (without exceeding request limitations while testing!) were steep learning curves but very worthwhile.
+Setting up an effective deployment pipeline to an AWS Lightsail instance (chosen to provide predictable costing) was one of the stand out challenges. In particular, successfully setting up the Nginx reverse proxy and Let’s Encrypt SSL certbot (without exceeding request limitations while testing!) were steep learning curves but very worthwhile. The database has since moved from a separate Lightsail database into a pgvector-enabled Postgres 16 container on the same instance, ready for vector search work.
 
 In terms of further improvements (beyond adding more movies to the database), I am keen to provide further endpoints for filtering and searching content, such as by actor, director, and availability on streaming services.

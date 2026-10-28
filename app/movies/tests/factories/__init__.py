@@ -37,6 +37,8 @@ class MovieFactory(factory.django.DjangoModelFactory):
 
     class Meta:
         model = Movie
+        # Post-generation hooks only create related rows, so no re-save is needed.
+        skip_postgeneration_save = True
 
     @factory.post_generation
     def review(self, create, extracted, **kwargs):
