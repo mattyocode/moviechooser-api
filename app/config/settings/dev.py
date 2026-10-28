@@ -18,3 +18,6 @@ DATABASES = {
         "PORT": os.environ.get("SQL_PORT", "5432"),
     }
 }
+
+# No SMTP locally: print emails (e.g. password-reset links) to the container log.
+EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
