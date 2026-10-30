@@ -21,6 +21,27 @@ The Dockerized app is deployed to an AWS Lightsail instance via Github Actions. 
 
 Lightsail's managed-database backups no longer apply, so back up with `pg_dump`. See [docs/db-cutover.md](docs/db-cutover.md) for the migration from the old Lightsail-hosted database, rollback and backups.
 
+## Plot data and embeddings
+
+Each movie has a `MoviePlot` row holding long-form plot text and a 384-dimension embedding (`BAAI/bge-small-en-v1.5` via fastembed, baked into the images at `/opt/fastembed`). Two idempotent management commands build them:
+
+- `fetch_plots` matches movies to English Wikipedia articles by IMDb ID (Wikidata property P345) and stores the article's Plot section. When there is no article or no plot section, it falls back to OMDb's full plot. Articles whose revision hasn't changed are skipped, and raw responses are cached in `app/.plot_cache/`. It needs `WIKIMEDIA_CONTACT` set to a contact address for the Wikimedia User-Agent. It ends with a summary line: `movies N | wikipedia W | omdb O | missing M | unchanged U`.
+- `build_plot_embeddings` embeds rows with no embedding, a different model or changed text.
+
+Both take `--limit`, `--imdbid` (repeatable), `--dry-run` and `--force`. `fetch_plots` also takes `--cache-dir`, and `build_plot_embeddings` takes `--batch-size`. Re-run both after adding movies.
+
+```bash
+# dev
+docker compose -f docker-compose.dev.yml exec movies python manage.py fetch_plots
+docker compose -f docker-compose.dev.yml exec movies python manage.py build_plot_embeddings
+
+# prod (on the instance, inside tmux: a full fetch takes about an hour)
+docker compose -f docker-compose.prod.yml exec djangogunicorn python manage.py fetch_plots
+docker compose -f docker-compose.prod.yml exec djangogunicorn python manage.py build_plot_embeddings
+```
+
+Wikipedia text is licensed CC BY-SA. It is used only for search and is never returned by the API. Anything that shows plot text must attribute it with the stored `source_url` and `source_revid`, and link the licence.
+
 ## Requirements
 
 - python = "3.12"
