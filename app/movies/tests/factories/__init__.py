@@ -4,7 +4,7 @@ import factory
 from factory import fuzzy
 from faker import Factory as FakerFactory
 
-from movies.models import Genre, Movie, Review
+from movies.models import Genre, Movie, MoviePlot, PlotSource, Review
 
 faker = FakerFactory.create()
 
@@ -62,3 +62,16 @@ class MovieWithGenreFactory(MovieFactory):
                 else:
                     genre = GenreFactory(name=genre)
                 self.genre.add(genre)
+
+
+class MoviePlotFactory(factory.django.DjangoModelFactory):
+    movie = factory.SubFactory(MovieFactory)
+    source = PlotSource.WIKIPEDIA
+    text = factory.LazyAttribute(lambda x: faker.paragraph(nb_sentences=8))
+    source_url = factory.Sequence(
+        lambda n: "https://en.wikipedia.org/wiki/Tester_%s" % n
+    )
+    source_revid = factory.Sequence(lambda n: 1000 + n)
+
+    class Meta:
+        model = MoviePlot

@@ -23,6 +23,10 @@ COPY poetry.lock pyproject.toml /app/
 RUN poetry config virtualenvs.create false \
   && poetry install --no-interaction --no-ansi
 
+# bake the plot embedding model in, outside the ./app bind mount
+ENV FASTEMBED_CACHE_PATH /opt/fastembed
+RUN python -c "from fastembed import TextEmbedding; TextEmbedding('BAAI/bge-small-en-v1.5', cache_dir='/opt/fastembed')"
+
 # copy entrypoint.sh
 COPY ./entrypoint.sh /app/entrypoint.sh
 RUN chmod +x /app/entrypoint.sh

@@ -1,6 +1,19 @@
+import numpy as np
 import pytest
+from django.db import IntegrityError
 
-from movies.models import Actor, Director, Genre, Movie, OnDemand, Review
+from movies.models import (
+    Actor,
+    Director,
+    Genre,
+    Movie,
+    MoviePlot,
+    OnDemand,
+    PlotSource,
+    Review,
+)
+
+from .factories import MovieFactory, MoviePlotFactory
 
 
 @pytest.mark.django_db
@@ -106,3 +119,54 @@ def test_review_model(add_movie):
     assert review.source == "imdb"
     assert review.score == 65
     assert str(review) == review.source + "--" + str(review.score)
+
+
+@pytest.mark.django_db
+def test_movieplot_model():
+    movie = MovieFactory()
+    plot = MoviePlot.objects.create(
+        movie=movie,
+        source=PlotSource.WIKIPEDIA,
+        text="A tester tests things.",
+        source_url="https://en.wikipedia.org/wiki/Tester",
+        source_revid=123,
+    )
+
+    assert movie.plot_data == plot
+    assert plot.pk == movie.imdbid
+    assert plot.embedding is None
+    assert plot.model_name == ""
+    assert str(plot) == f"{movie.imdbid}--wikipedia"
+
+
+@pytest.mark.django_db
+def test_movieplot_is_one_to_one():
+    plot = MoviePlotFactory()
+
+    with pytest.raises(IntegrityError):
+        MoviePlot.objects.create(
+            movie=plot.movie,
+            source=PlotSource.OMDB,
+            text="Second plot",
+            source_url="https://www.imdb.com/title/x/",
+        )
+
+
+@pytest.mark.django_db
+def test_movieplot_deleted_with_movie():
+    plot = MoviePlotFactory()
+
+    plot.movie.delete()
+
+    assert not MoviePlot.objects.exists()
+
+
+@pytest.mark.django_db
+def test_movieplot_stores_384_dim_vector():
+    vector = np.linspace(-1, 1, 384, dtype=np.float32)
+    plot = MoviePlotFactory(embedding=vector)
+
+    plot.refresh_from_db()
+
+    assert len(plot.embedding) == 384
+    assert np.allclose(plot.embedding, vector)
