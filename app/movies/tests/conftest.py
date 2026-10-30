@@ -1,6 +1,10 @@
+import hashlib
+
+import numpy as np
 import pytest
 from pytest_factoryboy import register
 
+from movies import embeddings
 from movies.models import Movie
 
 from .factories import GenreFactory, MovieFactory
@@ -62,3 +66,20 @@ def mock_requests_get(mocker):
         "Response": "True",
     }
     return mock
+
+
+class FakeEmbeddingModel:
+    """Deterministic stand-in for fastembed: one unit vector per text."""
+
+    def embed(self, texts, batch_size=16):
+        for text in texts:
+            seed = int.from_bytes(hashlib.sha256(text.encode()).digest()[:4], "big")
+            vector = np.random.default_rng(seed).standard_normal(embeddings.DIMENSIONS)
+            yield (vector / np.linalg.norm(vector)).astype(np.float32)
+
+
+@pytest.fixture(autouse=True)
+def fake_embedding_model(monkeypatch):
+    """Tests never download or run the real model."""
+    monkeypatch.setattr(embeddings, "_model", None)
+    monkeypatch.setattr(embeddings, "_load_model", FakeEmbeddingModel)

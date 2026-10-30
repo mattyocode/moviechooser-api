@@ -26,3 +26,4 @@ db_dump/
 log/
 moviedevbackup/
 app/config/staticfiles/
+app/.plot_cache/
