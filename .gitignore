@@ -27,3 +27,4 @@ log/
 moviedevbackup/
 app/config/staticfiles/
 app/.plot_cache/
+.DS_Store
