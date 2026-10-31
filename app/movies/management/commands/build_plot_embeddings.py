@@ -78,13 +78,20 @@ class Command(BaseCommand):
         empty = [p for p in plots if not premises[p.pk][0]]
         # No premise text: drop any vector left over from an earlier premise.
         to_clear = [p for p in empty if p.premise_embedding is not None]
+        # Stale rows cut off by --limit are reported as "left", not "skipped".
+        plot_stale, premise_stale, clear_stale = (
+            len(plot_todo),
+            len(premise_todo),
+            len(to_clear),
+        )
         if options["limit"] is not None:
             plot_todo = plot_todo[: options["limit"]]
             premise_todo = premise_todo[: options["limit"]]
             to_clear = to_clear[: options["limit"]]
 
         if not options["dry_run"]:
-            self.embed_plots(plot_todo, options["batch_size"])
+            # Premises first: their text is never empty, so they can't fail on
+            # a bad plot row, and a plot pass error leaves them done.
             self.embed_premises(premise_todo, premises, options["batch_size"])
             for plot in to_clear:
                 plot.premise_embedding = None
@@ -94,14 +101,18 @@ class Command(BaseCommand):
                 to_clear,
                 ["premise_embedding", "premise_model_name", "premise_text_hash"],
             )
+            self.embed_plots(plot_todo, options["batch_size"])
 
         verb = "would embed" if options["dry_run"] else "embedded"
         clear_verb = "would clear" if options["dry_run"] else "cleared"
         total = len(plots)
+        plot_left = plot_stale - len(plot_todo)
+        premise_left = premise_stale - len(premise_todo) + clear_stale - len(to_clear)
         self.stdout.write(
-            f"plot: {verb} {len(plot_todo)}, skipped {total - len(plot_todo)} | "
+            f"plot: {verb} {len(plot_todo)}, skipped {total - plot_stale}, "
+            f"left {plot_left} | "
             f"premise: {verb} {len(premise_todo)}, "
-            f"skipped {total - len(premise_todo) - len(empty)}, "
+            f"skipped {total - premise_stale - len(empty)}, left {premise_left}, "
             f"empty {len(empty)}, {clear_verb} {len(to_clear)} | total {total}"
         )
 

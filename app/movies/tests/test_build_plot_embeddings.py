@@ -20,16 +20,25 @@ def run(*args):
 
 
 def summary(
-    plot, plot_skipped, premise, premise_skipped, empty=0, cleared=0, dry=False
+    plot,
+    plot_skipped,
+    premise,
+    premise_skipped,
+    empty=0,
+    cleared=0,
+    plot_left=0,
+    premise_left=0,
+    dry=False,
 ):
     verb, clear_verb = (
         ("would embed", "would clear") if dry else ("embedded", "cleared")
     )
-    total = plot + plot_skipped
+    total = plot + plot_skipped + plot_left
     return (
-        f"plot: {verb} {plot}, skipped {plot_skipped} | "
+        f"plot: {verb} {plot}, skipped {plot_skipped}, left {plot_left} | "
         f"premise: {verb} {premise}, skipped {premise_skipped}, "
-        f"empty {empty}, {clear_verb} {cleared} | total {total}"
+        f"left {premise_left}, empty {empty}, {clear_verb} {cleared} | "
+        f"total {total}"
     )
 
 
@@ -138,7 +147,7 @@ def test_limit_picking_different_rows_per_pass_leaves_nothing_stale(monkeypatch)
     run("--imdbid", a.pk)
     Movie.objects.filter(pk=a.pk).update(plot="A chef opens a restaurant.")
 
-    assert run("--limit", "1") == summary(1, 1, 1, 1)
+    assert run("--limit", "1") == summary(1, 1, 1, 0, premise_left=1)
     b.refresh_from_db()
     assert b.model_name == "other/model"
     assert b.premise_model_name == ORIGINAL_MODEL
@@ -150,7 +159,17 @@ def test_limit_picking_different_rows_per_pass_leaves_nothing_stale(monkeypatch)
 
 
 @pytest.mark.django_db
-def test_interrupted_premise_pass_is_finished_by_the_next_run(monkeypatch):
+@pytest.mark.parametrize(
+    "crashing_pass, expected",
+    [
+        # Premises run first, so the plot pass never started either.
+        ("embed_premises", (2, 0, 2, 0)),
+        ("embed_plots", (2, 0, 0, 2)),
+    ],
+)
+def test_interrupted_pass_is_finished_by_the_next_run(
+    monkeypatch, crashing_pass, expected
+):
     make_plots(2)
     run()
     monkeypatch.setattr(embeddings, "MODEL_NAME", "other/model")
@@ -159,14 +178,13 @@ def test_interrupted_premise_pass_is_finished_by_the_next_run(monkeypatch):
         raise RuntimeError("interrupted")
 
     with monkeypatch.context() as m:
-        m.setattr(Command, "embed_premises", crash)
+        m.setattr(Command, crashing_pass, crash)
         with pytest.raises(RuntimeError):
             run()
 
-    assert run() == summary(0, 2, 2, 0)
-    assert set(MoviePlot.objects.values_list("premise_model_name", flat=True)) == {
-        "other/model"
-    }
+    assert run() == summary(*expected)
+    for field in ("model_name", "premise_model_name"):
+        assert set(MoviePlot.objects.values_list(field, flat=True)) == {"other/model"}
 
 
 @pytest.mark.django_db
@@ -209,7 +227,32 @@ def test_dry_run_writes_nothing():
 def test_limit_imdbid_and_force():
     make_plots(2)
 
-    assert run("--limit", "1") == summary(1, 1, 1, 1)
+    assert run("--limit", "1") == summary(1, 0, 1, 0, plot_left=1, premise_left=1)
     remaining = MoviePlot.objects.get(embedding__isnull=True)
     assert run("--imdbid", remaining.pk) == summary(1, 0, 1, 0)
     assert run("--force", "--batch-size", "1") == summary(2, 0, 2, 0)
+
+
+@pytest.mark.django_db
+def test_bad_plot_row_does_not_block_premises():
+    make_plots(1)
+    bad = MoviePlotFactory(movie__plot="A thief plans one last job.", text="")
+
+    with pytest.raises(ValueError):
+        run()
+
+    assert MoviePlot.objects.filter(premise_embedding__isnull=True).count() == 0
+    bad.refresh_from_db()
+    assert bad.premise_model_name == embeddings.MODEL_NAME
+
+
+@pytest.mark.django_db
+def test_limit_reports_stale_rows_it_left():
+    make_plots(3)
+
+    assert run("--limit", "1", "--dry-run") == summary(
+        1, 0, 1, 0, plot_left=2, premise_left=2, dry=True
+    )
+    run("--limit", "1")
+    assert run("--limit", "1") == summary(1, 1, 1, 1, plot_left=1, premise_left=1)
+    assert run() == summary(1, 2, 1, 2)
