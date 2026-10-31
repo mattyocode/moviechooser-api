@@ -35,6 +35,19 @@ def text_hash(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
+def premise_text(movie) -> str:
+    """Sorted genre names, then the OMDb short plot.
+
+    Never the title: title words match unrelated movies (Baby Driver -> Babyteeth).
+    Returns "" when the movie has neither genres nor a plot.
+    """
+    genres = ", ".join(sorted(genre.name for genre in movie.genre.all()))
+    plot = (movie.plot or "").strip()
+    if genres and plot:
+        return f"{genres}. {plot}"
+    return genres or plot
+
+
 def split_sentences(text: str) -> list[str]:
     sentences = []
     for paragraph in text.split("\n"):
