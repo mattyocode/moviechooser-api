@@ -97,6 +97,9 @@ class MoviePlot(models.Model):
     embedding = VectorField(dimensions=384, null=True, blank=True)
     model_name = models.CharField(max_length=100, blank=True)
     embedded_text_hash = models.CharField(max_length=64, blank=True)
+    # Genres plus OMDb short plot, never the title: see embeddings.premise_text.
+    premise_embedding = VectorField(dimensions=384, null=True, blank=True)
+    premise_text_hash = models.CharField(max_length=64, blank=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
@@ -107,7 +110,14 @@ class MoviePlot(models.Model):
                 opclasses=["vector_cosine_ops"],
                 m=16,
                 ef_construction=64,
-            )
+            ),
+            HnswIndex(
+                name="movieplot_premise_hnsw",
+                fields=["premise_embedding"],
+                opclasses=["vector_cosine_ops"],
+                m=16,
+                ef_construction=64,
+            ),
         ]
 
     def __str__(self):

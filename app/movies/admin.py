@@ -35,11 +35,21 @@ class MovieAdmin(admin.ModelAdmin):
 
 @admin.register(MoviePlot)
 class MoviePlotAdmin(admin.ModelAdmin):
-    list_display = ("movie", "source", "model_name", "updated_at")
+    list_display = (
+        "movie",
+        "source",
+        "model_name",
+        "has_premise_embedding",
+        "updated_at",
+    )
     list_filter = ("source", "model_name")
     list_select_related = ("movie",)
     search_fields = ("movie__imdbid", "movie__title")
-    exclude = ("embedding",)
+    exclude = ("embedding", "premise_embedding")
+
+    @admin.display(boolean=True, description="premise")
+    def has_premise_embedding(self, obj):
+        return obj.premise_embedding is not None
 
     def has_add_permission(self, request):
         return False
