@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from io import StringIO
 
 import numpy as np
@@ -7,7 +8,7 @@ from django.core.management import call_command
 from movies import embeddings
 from movies.models import Genre, Movie, MoviePlot
 
-from ..management.commands.build_plot_embeddings import Command
+from ..management.commands.build_plot_embeddings import PLOT, PREMISE, Command
 from .factories import MoviePlotFactory
 
 ORIGINAL_MODEL = embeddings.MODEL_NAME
@@ -163,8 +164,8 @@ def test_limit_picking_different_rows_per_pass_leaves_nothing_stale(monkeypatch)
     "crashing_pass, expected",
     [
         # Premises run first, so the plot pass never started either.
-        ("embed_premises", (2, 0, 2, 0)),
-        ("embed_plots", (2, 0, 0, 2)),
+        (PREMISE, (2, 0, 2, 0)),
+        (PLOT, (2, 0, 0, 2)),
     ],
 )
 def test_interrupted_pass_is_finished_by_the_next_run(
@@ -174,11 +175,15 @@ def test_interrupted_pass_is_finished_by_the_next_run(
     run()
     monkeypatch.setattr(embeddings, "MODEL_NAME", "other/model")
 
-    def crash(*args, **kwargs):
-        raise RuntimeError("interrupted")
+    embed = Command.embed
+
+    def crash(self, vector, *args, **kwargs):
+        if vector == crashing_pass:
+            raise RuntimeError("interrupted")
+        return embed(self, vector, *args, **kwargs)
 
     with monkeypatch.context() as m:
-        m.setattr(Command, crashing_pass, crash)
+        m.setattr(Command, "embed", crash)
         with pytest.raises(RuntimeError):
             run()
 
@@ -256,3 +261,18 @@ def test_limit_reports_stale_rows_it_left():
     run("--limit", "1")
     assert run("--limit", "1") == summary(1, 1, 1, 1, plot_left=1, premise_left=1)
     assert run() == summary(1, 2, 1, 2)
+
+
+@pytest.mark.django_db
+def test_embedding_and_clearing_update_updated_at():
+    keep, cleared = make_plots(2)
+    run()
+    MoviePlot.objects.update(updated_at=datetime(2020, 1, 1, tzinfo=timezone.utc))
+
+    Movie.objects.filter(pk=keep.pk).update(plot="A chef opens a restaurant.")
+    Movie.objects.filter(pk=cleared.pk).update(plot=None)
+    run()
+
+    for plot in (keep, cleared):
+        plot.refresh_from_db()
+        assert plot.updated_at.year > 2020
