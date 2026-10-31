@@ -170,3 +170,14 @@ def test_movieplot_stores_384_dim_vector():
 
     assert len(plot.embedding) == 384
     assert np.allclose(plot.embedding, vector)
+
+
+@pytest.mark.django_db
+def test_movieplot_stores_384_dim_premise_vector():
+    vector = np.linspace(1, -1, 384, dtype=np.float32)
+    plot = MoviePlotFactory(premise_embedding=vector)
+
+    plot.refresh_from_db()
+
+    assert len(plot.premise_embedding) == 384
+    assert np.allclose(plot.premise_embedding, vector)
