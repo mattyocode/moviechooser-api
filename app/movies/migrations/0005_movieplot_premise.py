@@ -21,6 +21,11 @@ class Migration(migrations.Migration):
         ),
         migrations.AddField(
             model_name="movieplot",
+            name="premise_model_name",
+            field=models.CharField(blank=True, max_length=100),
+        ),
+        migrations.AddField(
+            model_name="movieplot",
             name="premise_text_hash",
             field=models.CharField(blank=True, max_length=64),
         ),

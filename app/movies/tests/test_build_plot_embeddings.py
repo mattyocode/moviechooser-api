@@ -7,7 +7,10 @@ from django.core.management import call_command
 from movies import embeddings
 from movies.models import Genre, Movie, MoviePlot
 
+from ..management.commands.build_plot_embeddings import Command
 from .factories import MoviePlotFactory
+
+ORIGINAL_MODEL = embeddings.MODEL_NAME
 
 
 def run(*args):
@@ -16,12 +19,17 @@ def run(*args):
     return out.getvalue().strip()
 
 
-def summary(plot, plot_skipped, premise, premise_skipped, empty=0, verb="embedded"):
+def summary(
+    plot, plot_skipped, premise, premise_skipped, empty=0, cleared=0, dry=False
+):
+    verb, clear_verb = (
+        ("would embed", "would clear") if dry else ("embedded", "cleared")
+    )
     total = plot + plot_skipped
     return (
         f"plot: {verb} {plot}, skipped {plot_skipped} | "
-        f"premise: {verb} {premise}, skipped {premise_skipped}, empty {empty} | "
-        f"total {total}"
+        f"premise: {verb} {premise}, skipped {premise_skipped}, "
+        f"empty {empty}, {clear_verb} {cleared} | total {total}"
     )
 
 
@@ -44,6 +52,7 @@ def test_first_run_embeds_both_vectors_then_second_run_none():
     assert run() == summary(3, 0, 3, 0)
     for plot in MoviePlot.objects.select_related("movie"):
         assert plot.model_name == embeddings.MODEL_NAME
+        assert plot.premise_model_name == embeddings.MODEL_NAME
         assert plot.embedded_text_hash == embeddings.text_hash(plot.text)
         assert plot.premise_text_hash == embeddings.text_hash(
             embeddings.premise_text(plot.movie)
@@ -111,21 +120,53 @@ def test_model_change_re_embeds_both_vectors_in_one_run(monkeypatch):
     monkeypatch.setattr(embeddings, "MODEL_NAME", "other/model")
 
     assert run() == summary(2, 0, 2, 0)
-    assert set(MoviePlot.objects.values_list("model_name", flat=True)) == {
-        "other/model"
-    }
+    for field in ("model_name", "premise_model_name"):
+        assert set(MoviePlot.objects.values_list(field, flat=True)) == {"other/model"}
     assert run() == summary(0, 2, 0, 2)
 
 
 @pytest.mark.django_db
-def test_model_change_with_limit_moves_both_vectors_together(monkeypatch):
+def test_limit_picking_different_rows_per_pass_leaves_nothing_stale(monkeypatch):
+    # A is on the new model but its premise changed; B is still on the old one.
+    # With --limit 1 the plot pass takes B and the premise pass takes A.
+    a, b = (
+        MoviePlotFactory(movie__imdbid=imdbid, movie__plot="A driver plans a heist.")
+        for imdbid in ("tt0000001", "tt0000002")
+    )
+    run()
+    monkeypatch.setattr(embeddings, "MODEL_NAME", "other/model")
+    run("--imdbid", a.pk)
+    Movie.objects.filter(pk=a.pk).update(plot="A chef opens a restaurant.")
+
+    assert run("--limit", "1") == summary(1, 1, 1, 1)
+    b.refresh_from_db()
+    assert b.model_name == "other/model"
+    assert b.premise_model_name == ORIGINAL_MODEL
+
+    assert run() == summary(0, 2, 1, 1)
+    assert run() == summary(0, 2, 0, 2)
+    for field in ("model_name", "premise_model_name"):
+        assert set(MoviePlot.objects.values_list(field, flat=True)) == {"other/model"}
+
+
+@pytest.mark.django_db
+def test_interrupted_premise_pass_is_finished_by_the_next_run(monkeypatch):
     make_plots(2)
     run()
     monkeypatch.setattr(embeddings, "MODEL_NAME", "other/model")
 
-    assert run("--limit", "1") == summary(1, 1, 1, 1)
-    assert run() == summary(1, 1, 1, 1)
-    assert run() == summary(0, 2, 0, 2)
+    def crash(*args, **kwargs):
+        raise RuntimeError("interrupted")
+
+    with monkeypatch.context() as m:
+        m.setattr(Command, "embed_premises", crash)
+        with pytest.raises(RuntimeError):
+            run()
+
+    assert run() == summary(0, 2, 2, 0)
+    assert set(MoviePlot.objects.values_list("premise_model_name", flat=True)) == {
+        "other/model"
+    }
 
 
 @pytest.mark.django_db
@@ -146,17 +187,20 @@ def test_premise_vector_is_cleared_when_premise_becomes_empty():
 
     Movie.objects.filter(pk=plot.pk).update(plot=None)
 
-    assert run() == summary(0, 1, 0, 0, empty=1)
+    assert run("--dry-run") == summary(0, 1, 0, 0, empty=1, cleared=1, dry=True)
+    assert run() == summary(0, 1, 0, 0, empty=1, cleared=1)
     plot.refresh_from_db()
     assert plot.premise_embedding is None
+    assert plot.premise_model_name == ""
     assert plot.premise_text_hash == ""
+    assert run() == summary(0, 1, 0, 0, empty=1)
 
 
 @pytest.mark.django_db
 def test_dry_run_writes_nothing():
     make_plots(2)
 
-    assert run("--dry-run") == summary(2, 0, 2, 0, verb="would embed")
+    assert run("--dry-run") == summary(2, 0, 2, 0, dry=True)
     assert not MoviePlot.objects.filter(embedding__isnull=False).exists()
     assert not MoviePlot.objects.filter(premise_embedding__isnull=False).exists()
 
