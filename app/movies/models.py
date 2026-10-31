@@ -99,6 +99,9 @@ class MoviePlot(models.Model):
     embedded_text_hash = models.CharField(max_length=64, blank=True)
     # Genres plus OMDb short plot, never the title: see embeddings.premise_text.
     premise_embedding = VectorField(dimensions=384, null=True, blank=True)
+    # Per vector, so an interrupted or --limit run can't leave a premise vector
+    # from an old model looking current.
+    premise_model_name = models.CharField(max_length=100, blank=True)
     premise_text_hash = models.CharField(max_length=64, blank=True)
     updated_at = models.DateTimeField(auto_now=True)
 

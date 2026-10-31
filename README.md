@@ -30,7 +30,7 @@ Each movie has a `MoviePlot` row holding long-form plot text and two 384-dimensi
   - the plot vector, from `MoviePlot.text`;
   - the premise vector, from the movie's genres (sorted) plus OMDb's short plot (`Movie.plot`), e.g. `Action, Crime, Drama. A young getaway driver …`. Averaging a long plot blurs a specific premise, which is why the second vector exists. The title is deliberately left out, because title words match unrelated movies (*Baby Driver* → *Babyteeth*). Search is meant to combine the two vectors at query time.
 
-  It ends with `plot: embedded N, skipped S | premise: embedded P, skipped Q, empty E | total T`, where `empty` counts movies with neither genres nor a plot, which get no premise vector.
+  Each vector records its own model name, so a run that is interrupted or cut short by `--limit` is finished by the next one. It ends with `plot: embedded N, skipped S | premise: embedded P, skipped Q, empty E, cleared C | total T`. `empty` counts movies with neither genres nor a plot, which get no premise vector, and `cleared` counts old premise vectors removed from those movies in this run.
 
 Both take `--limit`, `--imdbid` (repeatable), `--dry-run` and `--force`. `fetch_plots` also takes `--cache-dir`, and `build_plot_embeddings` takes `--batch-size`. Re-run both after adding movies.
 
