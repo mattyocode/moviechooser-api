@@ -83,12 +83,18 @@ class Command(BaseCommand):
                 if options["force"] or is_stale(p, vector, texts[vector][p.pk][1])
             ]
 
-        # Plot rows with empty text stay in: embedding them fails loudly.
-        plot_todo = stale(PLOT, plots)
-        premise_todo = stale(PREMISE, [p for p in plots if texts[PREMISE][p.pk][0]])
-        empty = [p for p in plots if not texts[PREMISE][p.pk][0]]
+        # Rows with no text can't be embedded: count them as "empty" so one bad
+        # row doesn't stop the rest of the pass.
+        with_text = {
+            vector: [p for p in plots if texts[vector][p.pk][0].strip()]
+            for vector in (PLOT, PREMISE)
+        }
+        plot_todo = stale(PLOT, with_text[PLOT])
+        premise_todo = stale(PREMISE, with_text[PREMISE])
+        plot_empty = len(plots) - len(with_text[PLOT])
+        premise_empty = [p for p in plots if not texts[PREMISE][p.pk][0]]
         # No premise text: drop any vector left over from an earlier premise.
-        to_clear = [p for p in empty if p.premise_embedding is not None]
+        to_clear = [p for p in premise_empty if p.premise_embedding is not None]
         # Stale rows cut off by --limit are reported as "left", not "skipped".
         plot_stale, premise_stale, clear_stale = (
             len(plot_todo),
@@ -101,16 +107,8 @@ class Command(BaseCommand):
             to_clear = to_clear[: options["limit"]]
 
         if not options["dry_run"]:
-            # Premises first: their text is never empty, so they can't fail on
-            # a bad plot row, and a plot pass error leaves them done.
             self.embed(PREMISE, premise_todo, texts[PREMISE], options["batch_size"])
-            now = timezone.now()
-            for plot in to_clear:
-                plot.premise_embedding = None
-                plot.premise_model_name = ""
-                plot.premise_text_hash = ""
-                plot.updated_at = now
-            MoviePlot.objects.bulk_update(to_clear, PREMISE.fields)
+            self.clear(PREMISE, to_clear)
             self.embed(PLOT, plot_todo, texts[PLOT], options["batch_size"])
 
         verb = "would embed" if options["dry_run"] else "embedded"
@@ -119,12 +117,24 @@ class Command(BaseCommand):
         plot_left = plot_stale - len(plot_todo)
         premise_left = premise_stale - len(premise_todo) + clear_stale - len(to_clear)
         self.stdout.write(
-            f"plot: {verb} {len(plot_todo)}, skipped {total - plot_stale}, "
-            f"left {plot_left} | "
+            f"plot: {verb} {len(plot_todo)}, "
+            f"skipped {total - plot_stale - plot_empty}, left {plot_left}, "
+            f"empty {plot_empty} | "
             f"premise: {verb} {len(premise_todo)}, "
-            f"skipped {total - premise_stale - len(empty)}, left {premise_left}, "
-            f"empty {len(empty)}, {clear_verb} {len(to_clear)} | total {total}"
+            f"skipped {total - premise_stale - len(premise_empty)}, "
+            f"left {premise_left}, empty {len(premise_empty)}, "
+            f"{clear_verb} {len(to_clear)} | total {total}"
         )
+
+    def clear(self, vector, todo):
+        """Remove the vector from each row in todo; it has no text to embed."""
+        now = timezone.now()
+        for plot in todo:
+            setattr(plot, vector.vector, None)
+            setattr(plot, vector.model_name, "")
+            setattr(plot, vector.text_hash, "")
+            plot.updated_at = now
+        MoviePlot.objects.bulk_update(todo, vector.fields)
 
     def embed(self, vector, todo, texts, batch_size):
         """Embed texts[pk] for each row in todo and save the vector's fields.

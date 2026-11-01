@@ -29,14 +29,16 @@ def summary(
     cleared=0,
     plot_left=0,
     premise_left=0,
+    plot_empty=0,
     dry=False,
 ):
     verb, clear_verb = (
         ("would embed", "would clear") if dry else ("embedded", "cleared")
     )
-    total = plot + plot_skipped + plot_left
+    total = plot + plot_skipped + plot_left + plot_empty
     return (
-        f"plot: {verb} {plot}, skipped {plot_skipped}, left {plot_left} | "
+        f"plot: {verb} {plot}, skipped {plot_skipped}, left {plot_left}, "
+        f"empty {plot_empty} | "
         f"premise: {verb} {premise}, skipped {premise_skipped}, "
         f"left {premise_left}, empty {empty}, {clear_verb} {cleared} | "
         f"total {total}"
@@ -239,16 +241,20 @@ def test_limit_imdbid_and_force():
 
 
 @pytest.mark.django_db
-def test_bad_plot_row_does_not_block_premises():
-    make_plots(1)
-    bad = MoviePlotFactory(movie__plot="A thief plans one last job.", text="")
+def test_plot_row_without_text_is_counted_and_does_not_block_others():
+    # Sorted first, so it would otherwise fail the batch the good row is in.
+    bad = MoviePlotFactory(
+        movie__imdbid="tt0000001", movie__plot="A thief plans one last job.", text=" "
+    )
+    good = MoviePlotFactory(movie__imdbid="tt0000002", movie__plot="A heist.")
 
-    with pytest.raises(ValueError):
-        run()
-
-    assert MoviePlot.objects.filter(premise_embedding__isnull=True).count() == 0
+    assert run() == summary(1, 0, 2, 0, plot_empty=1)
     bad.refresh_from_db()
+    good.refresh_from_db()
+    assert bad.embedding is None
     assert bad.premise_model_name == embeddings.MODEL_NAME
+    assert good.embedding is not None
+    assert run() == summary(0, 1, 0, 2, plot_empty=1)
 
 
 @pytest.mark.django_db
