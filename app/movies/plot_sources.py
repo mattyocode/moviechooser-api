@@ -4,6 +4,7 @@ import hashlib
 import json
 import logging
 import os
+import re
 import time
 from email.utils import parsedate_to_datetime
 from pathlib import Path
@@ -42,6 +43,9 @@ MIN_PLOT_WORDS = 30
 # Transient failures worth retrying. MediaWiki reports some of them in a 200 body.
 RETRY_STATUSES = {429, 500, 502, 503, 504}
 RETRY_API_ERRORS = {"maxlag", "ratelimited"}
+# A server asking for a longer wait is treated as down rather than waited on.
+MAX_RETRY_AFTER = 120
+IMDB_ID = re.compile(r"tt\d+")
 
 
 class PlotSourceError(Exception):
@@ -79,7 +83,11 @@ class PoliteClient:
                     self.sleep(wait)
             try:
                 response = self.session.request(method, url, timeout=60, **kwargs)
-            except (requests.ConnectionError, requests.Timeout) as e:
+            except (
+                requests.ConnectionError,
+                requests.Timeout,
+                requests.exceptions.ChunkedEncodingError,
+            ) as e:
                 self._last = self.clock()
                 problem, retry_after = type(e).__name__, 2**attempt
             else:
@@ -91,18 +99,27 @@ class PoliteClient:
                 elif status >= 400:
                     raise PlotSourceError(f"HTTP {status} from {url}")
                 else:
-                    data = response.json()
-                    error = data.get("error") if isinstance(data, dict) else None
-                    if not error:
-                        return data
-                    code = error.get("code")
-                    if code not in RETRY_API_ERRORS:
-                        raise PlotSourceError(
-                            f"API error {code!r} from {url}: {error.get('info', '')}"
-                        )
-                    problem = f"API error {code!r}"
-                    retry_after = retry_after_seconds(response, 5)
+                    try:
+                        data = response.json()
+                    except ValueError:
+                        # A body cut off mid-stream, e.g. a query service timeout.
+                        problem, retry_after = "Invalid JSON", 2**attempt
+                    else:
+                        error = data.get("error") if isinstance(data, dict) else None
+                        if not error:
+                            return data
+                        code = error.get("code")
+                        if code not in RETRY_API_ERRORS:
+                            raise PlotSourceError(
+                                f"API error {code!r} from {url}: "
+                                f"{error.get('info', '')}"
+                            )
+                        problem = f"API error {code!r}"
+                        retry_after = retry_after_seconds(response, 5)
 
+            if attempt + 1 == self.max_tries:
+                break
+            retry_after = min(retry_after, MAX_RETRY_AFTER)
             logger.warning(f"{problem} from {url}, backing off {retry_after}s")
             self.sleep(retry_after)
         raise PlotSourceError(f"Gave up on {url} after {self.max_tries} tries.")
@@ -158,7 +175,15 @@ SELECT ?imdb ?item ?title ?isFilm WHERE {{
 
 
 def imdb_to_titles(client, imdbids, batch_size=SPARQL_BATCH_SIZE):
-    """Map IMDb IDs to enwiki article titles. IDs with no article are left out."""
+    """Map IMDb IDs to enwiki article titles. IDs with no article are left out.
+
+    IDs that aren't "tt" plus digits are left out too: one bad ID would break
+    the SPARQL query for its whole batch.
+    """
+    bad = [i for i in imdbids if not IMDB_ID.fullmatch(i)]
+    if bad:
+        logger.warning(f"Skipping malformed IMDb IDs: {bad}")
+        imdbids = [i for i in imdbids if IMDB_ID.fullmatch(i)]
     candidates = {}
     for start in range(0, len(imdbids), batch_size):
         data = client.request_json(
@@ -283,13 +308,17 @@ def omdb_api_key():
 
 
 def fetch_omdb_plot(client, imdbid, api_key=None):
-    """OMDb's full plot, or None when OMDb has none."""
+    """OMDb's full plot, or None when OMDb has none.
+
+    OMDb answers Response "False" when the lookup fails, which is an error, not
+    a missing plot: the caller would otherwise store the short plot as final.
+    """
     data = client.request_json(
         "GET",
         OMDB_URL,
         params={"i": imdbid, "plot": "full", "apikey": api_key or omdb_api_key()},
     )
-    plot = data.get("Plot")
-    if data.get("Response") == "True" and plot and plot != "N/A":
-        return plot
-    return None
+    if data.get("Response") != "True":
+        raise PlotSourceError(f"OMDb error: {data.get('Error', 'no response')}")
+    plot = (data.get("Plot") or "").strip()
+    return plot if plot and plot != "N/A" else None

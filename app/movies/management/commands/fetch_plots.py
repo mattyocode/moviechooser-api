@@ -18,7 +18,10 @@ class Command(BaseCommand):
             "--imdbid", action="append", help="Only this movie (repeatable)."
         )
         parser.add_argument(
-            "--dry-run", action="store_true", help="Fetch, but write nothing."
+            "--dry-run",
+            action="store_true",
+            help="Fetch, but don't write to the database. The response cache is "
+            "still filled.",
         )
         parser.add_argument(
             "--force",
@@ -107,6 +110,7 @@ class Command(BaseCommand):
             self.unchanged += 1
             return
         text = plot_sources.fetch_omdb_plot(client, movie.imdbid) or movie.plot
+        text = (text or "").strip()
         if text and text != "N/A":
             self.save(
                 movie,
