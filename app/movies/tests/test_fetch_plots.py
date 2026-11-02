@@ -17,6 +17,7 @@ class FakeWeb:
     def __init__(self, monkeypatch):
         self.titles, self.revisions, self.extracts, self.omdb = {}, {}, {}, {}
         self.extract_requests = []
+        monkeypatch.setenv("OMDB_API_KEY", "test-key")
         monkeypatch.setattr(plot_sources, "make_client", lambda: object())
         monkeypatch.setattr(
             plot_sources,
@@ -145,14 +146,57 @@ def test_existing_omdb_row_is_not_refetched_but_upgrades_to_wikipedia(web):
 
 
 @pytest.mark.django_db
-def test_dry_run_writes_nothing(web):
-    movie = MovieFactory()
-    web.article(movie, "Heat", 100)
+def test_dry_run_writes_nothing_and_reports_what_it_would_write(web):
+    wiki, omdb, kept, missing = MovieFactory.create_batch(4, plot=None)
+    web.article(wiki, "Heat", 100)
+    web.omdb[omdb.imdbid] = "A long OMDb plot."
+    MoviePlotFactory(movie=kept, source=PlotSource.OMDB)
 
     lines = run("--dry-run")
 
+    assert MoviePlot.objects.count() == 1
+    assert lines[-1] == (
+        "dry run, nothing written | movies 4 | wikipedia 1 | omdb 2 | missing 1 | "
+        "unchanged 1"
+    )
+
+
+@pytest.mark.django_db
+def test_failed_request_keeps_the_existing_row_in_the_summary(web, monkeypatch):
+    plot = MoviePlotFactory(source=PlotSource.WIKIPEDIA, source_revid=1)
+    web.article(plot.movie, "Heat", 2)
+
+    def fail(*args):
+        raise plot_sources.PlotSourceError("HTTP 500")
+
+    monkeypatch.setattr(plot_sources, "fetch_extract", fail)
+
+    lines = run()
+
+    assert lines[-2] == f"errors (1): {plot.pk}"
+    assert lines[-1] == "movies 1 | wikipedia 1 | omdb 0 | missing 0 | unchanged 0"
+
+
+@pytest.mark.django_db
+def test_requires_omdb_api_key(web, monkeypatch):
+    monkeypatch.delenv("OMDB_API_KEY")
+
+    with pytest.raises(CommandError, match="OMDB_API_KEY"):
+        run()
     assert not MoviePlot.objects.exists()
-    assert lines[-1].startswith("dry run, nothing written | movies 1")
+
+
+@pytest.mark.django_db
+def test_source_failure_before_the_loop_is_a_command_error(web, monkeypatch):
+    MovieFactory()
+
+    def fail(*args):
+        raise plot_sources.PlotSourceError("Gave up on WDQS")
+
+    monkeypatch.setattr(plot_sources, "imdb_to_titles", fail)
+
+    with pytest.raises(CommandError, match="Gave up"):
+        run()
 
 
 @pytest.mark.django_db

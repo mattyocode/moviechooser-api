@@ -32,11 +32,6 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        try:
-            client = plot_sources.make_client()
-        except plot_sources.PlotSourceError as e:
-            raise CommandError(str(e))
-
         movies = Movie.objects.order_by("imdbid")
         if options["imdbid"]:
             movies = movies.filter(imdbid__in=options["imdbid"])
@@ -45,11 +40,20 @@ class Command(BaseCommand):
         movies = list(movies)
         existing = MoviePlot.objects.in_bulk([m.imdbid for m in movies])
 
-        titles = plot_sources.imdb_to_titles(client, [m.imdbid for m in movies])
-        revisions = plot_sources.latest_revisions(client, titles.values())
+        try:
+            client = plot_sources.make_client()
+            # Without a key every fallback would store the short plot as OMDb's,
+            # and later runs would treat it as final.
+            plot_sources.omdb_api_key()
+            titles = plot_sources.imdb_to_titles(client, [m.imdbid for m in movies])
+            revisions = plot_sources.latest_revisions(client, titles.values())
+        except plot_sources.PlotSourceError as e:
+            raise CommandError(str(e))
 
         self.no_article, self.no_section, self.errors = [], [], []
         self.unchanged = 0
+        # Each movie's source once this run is done (or would be, for --dry-run).
+        self.sources = {imdbid: plot.source for imdbid, plot in existing.items()}
         for i, movie in enumerate(movies, 1):
             try:
                 self.update_movie(
@@ -66,7 +70,7 @@ class Command(BaseCommand):
             if i % 50 == 0:
                 self.stderr.write(f"processed {i}/{len(movies)}")
 
-        self.report(movies, options["dry_run"])
+        self.report(len(movies), options["dry_run"])
 
     def update_movie(self, client, movie, plot, titles, revisions, options):
         title = titles.get(movie.imdbid)
@@ -114,15 +118,16 @@ class Command(BaseCommand):
             )
 
     def save(self, movie, dry_run, **fields):
+        self.sources[movie.imdbid] = fields["source"]
         # The embedding is kept: build_plot_embeddings sees the text hash change.
         if not dry_run:
             MoviePlot.objects.update_or_create(movie=movie, defaults=fields)
 
-    def report(self, movies, dry_run):
-        plots = MoviePlot.objects.filter(movie__in=movies)
-        wikipedia = plots.filter(source=PlotSource.WIKIPEDIA).count()
-        omdb = plots.filter(source=PlotSource.OMDB).count()
-        missing = len(movies) - wikipedia - omdb
+    def report(self, total, dry_run):
+        sources = list(self.sources.values())
+        wikipedia = sources.count(PlotSource.WIKIPEDIA)
+        omdb = sources.count(PlotSource.OMDB)
+        missing = total - wikipedia - omdb
 
         if self.no_article:
             self.stdout.write(
@@ -136,6 +141,6 @@ class Command(BaseCommand):
             self.stdout.write(f"errors ({len(self.errors)}): {' '.join(self.errors)}")
         prefix = "dry run, nothing written | " if dry_run else ""
         self.stdout.write(
-            f"{prefix}movies {len(movies)} | wikipedia {wikipedia} | omdb {omdb} | "
+            f"{prefix}movies {total} | wikipedia {wikipedia} | omdb {omdb} | "
             f"missing {missing} | unchanged {self.unchanged}"
         )

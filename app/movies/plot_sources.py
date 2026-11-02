@@ -5,7 +5,9 @@ import json
 import logging
 import os
 import time
+from email.utils import parsedate_to_datetime
 from pathlib import Path
+from urllib.parse import quote
 
 import requests
 
@@ -37,6 +39,9 @@ PLOT_HEADINGS = {
     "subject matter",
 }
 MIN_PLOT_WORDS = 30
+# Transient failures worth retrying. MediaWiki reports some of them in a 200 body.
+RETRY_STATUSES = {429, 500, 502, 503, 504}
+RETRY_API_ERRORS = {"maxlag", "ratelimited"}
 
 
 class PlotSourceError(Exception):
@@ -62,27 +67,61 @@ class PoliteClient:
         self._last = None
 
     def request_json(self, method, url, **kwargs):
+        """The decoded JSON body, retrying transient failures.
+
+        Errors name only `url`, never the query parameters, which can hold an
+        API key: requests' own messages include the full URL.
+        """
         for attempt in range(self.max_tries):
             if self._last is not None:
                 wait = self.min_interval - (self.clock() - self._last)
                 if wait > 0:
                     self.sleep(wait)
-            response = self.session.request(method, url, timeout=60, **kwargs)
-            self._last = self.clock()
-
-            if response.status_code in (429, 503):
-                retry_after = response.headers.get("Retry-After", 2**attempt)
+            try:
+                response = self.session.request(method, url, timeout=60, **kwargs)
+            except (requests.ConnectionError, requests.Timeout) as e:
+                self._last = self.clock()
+                problem, retry_after = type(e).__name__, 2**attempt
             else:
-                response.raise_for_status()
-                data = response.json()
-                error = data.get("error") if isinstance(data, dict) else None
-                if not error or error.get("code") != "maxlag":
-                    return data
-                retry_after = response.headers.get("Retry-After", 5)
+                self._last = self.clock()
+                status = response.status_code
+                if status in RETRY_STATUSES:
+                    problem = f"HTTP {status}"
+                    retry_after = retry_after_seconds(response, 2**attempt)
+                elif status >= 400:
+                    raise PlotSourceError(f"HTTP {status} from {url}")
+                else:
+                    data = response.json()
+                    error = data.get("error") if isinstance(data, dict) else None
+                    if not error:
+                        return data
+                    code = error.get("code")
+                    if code not in RETRY_API_ERRORS:
+                        raise PlotSourceError(
+                            f"API error {code!r} from {url}: {error.get('info', '')}"
+                        )
+                    problem = f"API error {code!r}"
+                    retry_after = retry_after_seconds(response, 5)
 
-            logger.warning(f"Backing off {retry_after}s from {url}")
-            self.sleep(float(retry_after))
+            logger.warning(f"{problem} from {url}, backing off {retry_after}s")
+            self.sleep(retry_after)
         raise PlotSourceError(f"Gave up on {url} after {self.max_tries} tries.")
+
+
+def retry_after_seconds(response, default):
+    """Retry-After as seconds. It may be a number or an HTTP date."""
+    value = response.headers.get("Retry-After")
+    if value is None:
+        return default
+    try:
+        return max(0.0, float(value))
+    except ValueError:
+        pass
+    try:
+        when = parsedate_to_datetime(value)
+    except (TypeError, ValueError):
+        return default
+    return max(0.0, when.timestamp() - time.time())
 
 
 def make_client(contact=None, **kwargs):
@@ -100,7 +139,9 @@ def make_client(contact=None, **kwargs):
 
 
 def article_url(title):
-    return ENWIKI_ARTICLE_URL.format(title=title.replace(" ", "_"))
+    # Keep the characters Wikipedia leaves bare in its own links; encode ?, # etc.
+    path = quote(title.replace(" ", "_"), safe="/:(),'!*")
+    return ENWIKI_ARTICLE_URL.format(title=path)
 
 
 def _sparql_query(imdbids):
@@ -160,21 +201,34 @@ def latest_revisions(client, titles, per_request=TITLES_PER_REQUEST):
             renamed[step["from"]] = step["to"]
         pages = {p["title"]: p["lastrevid"] for p in query["pages"] if "lastrevid" in p}
         for title in batch:
-            resolved = title
-            while resolved in renamed:
+            resolved, seen = title, {title}
+            while resolved in renamed and renamed[resolved] not in seen:
                 resolved = renamed[resolved]
+                seen.add(resolved)
             if resolved in pages:
                 revisions[title] = (resolved, pages[resolved])
     return revisions
+
+
+def _has_pages(data):
+    return isinstance(data, dict) and "pages" in data.get("query", {})
+
+
+def _read_cache(path):
+    """The cached response, or None if it is missing, truncated or not a result."""
+    try:
+        data = json.loads(path.read_text())
+    except (OSError, ValueError):
+        return None
+    return data if _has_pages(data) else None
 
 
 def fetch_extract(client, title, revid, cache_dir):
     """Plain text of the whole article, cached on disk by title and revision."""
     key = hashlib.sha1(title.encode("utf-8")).hexdigest()[:16]
     path = Path(cache_dir) / f"{key}-{revid}.json"
-    if path.exists():
-        data = json.loads(path.read_text())
-    else:
+    data = _read_cache(path)
+    if data is None:
         data = _wiki_query(
             client,
             prop="extracts",
@@ -183,8 +237,13 @@ def fetch_extract(client, title, revid, cache_dir):
             redirects=1,
             titles=title,
         )
+        if not _has_pages(data):
+            raise PlotSourceError(f"No pages in the extract response for {title!r}")
+        # Write then rename, so an interrupted run never leaves half a file.
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps(data))
+        tmp = path.with_name(f"{path.name}.tmp")
+        tmp.write_text(json.dumps(data))
+        os.replace(tmp, path)
     pages = data["query"]["pages"]
     return pages[0].get("extract", "") if pages else ""
 
@@ -216,13 +275,19 @@ def extract_plot_section(extract):
     return text if len(text.split()) >= MIN_PLOT_WORDS else None
 
 
-def fetch_omdb_plot(client, imdbid, api_key=None):
-    """OMDb's full plot, or None."""
-    api_key = api_key or os.environ.get("OMDB_API_KEY")
+def omdb_api_key():
+    api_key = os.environ.get("OMDB_API_KEY")
     if not api_key:
-        return None
+        raise PlotSourceError("Set OMDB_API_KEY for the OMDb fallback.")
+    return api_key
+
+
+def fetch_omdb_plot(client, imdbid, api_key=None):
+    """OMDb's full plot, or None when OMDb has none."""
     data = client.request_json(
-        "GET", OMDB_URL, params={"i": imdbid, "plot": "full", "apikey": api_key}
+        "GET",
+        OMDB_URL,
+        params={"i": imdbid, "plot": "full", "apikey": api_key or omdb_api_key()},
     )
     plot = data.get("Plot")
     if data.get("Response") == "True" and plot and plot != "N/A":
