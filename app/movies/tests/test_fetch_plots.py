@@ -205,3 +205,30 @@ def test_requires_wikimedia_contact(monkeypatch):
 
     with pytest.raises(CommandError, match="WIKIMEDIA_CONTACT"):
         run()
+
+
+@pytest.mark.django_db
+def test_omdb_failure_saves_nothing_so_the_next_run_retries(web, monkeypatch):
+    movie = MovieFactory(plot="Short stored plot.")
+
+    def fail(client, imdbid):
+        raise plot_sources.PlotSourceError("OMDb error: Error getting data.")
+
+    monkeypatch.setattr(plot_sources, "fetch_omdb_plot", fail)
+    lines = run()
+    assert not MoviePlot.objects.exists()
+    assert lines[-2] == f"errors (1): {movie.imdbid}"
+
+    monkeypatch.setattr(plot_sources, "fetch_omdb_plot", lambda c, i: "Full plot.")
+    run()
+    assert MoviePlot.objects.get(pk=movie.pk).text == "Full plot."
+
+
+@pytest.mark.django_db
+def test_whitespace_short_plot_is_not_saved(web):
+    MovieFactory(plot="   ")
+
+    lines = run()
+
+    assert not MoviePlot.objects.exists()
+    assert lines[-1] == "movies 1 | wikipedia 0 | omdb 0 | missing 1 | unchanged 0"

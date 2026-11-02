@@ -12,6 +12,8 @@ class FakeResponse:
         self.headers = headers or {}
 
     def json(self):
+        if isinstance(self.data, Exception):
+            raise self.data
         return self.data
 
     def raise_for_status(self):
@@ -98,6 +100,8 @@ def test_client_backs_off_on_maxlag():
         (FakeResponse({"error": {"code": "ratelimited"}}), 5),
         (requests.ConnectionError("refused"), 1),
         (requests.Timeout("slow"), 1),
+        (requests.exceptions.ChunkedEncodingError("cut off"), 1),
+        (FakeResponse(requests.JSONDecodeError("Expecting value", "{", 1)), 1),
     ],
 )
 def test_client_retries_transient_failures(failure, backoff):
@@ -144,11 +148,23 @@ def test_client_reads_retry_after_seconds_or_date(header, expected):
     assert plot_sources.retry_after_seconds(response, 4) == expected
 
 
-def test_client_gives_up_after_max_tries():
-    client, _ = make_client(*[FakeResponse(status_code=429)] * 5)
+def test_client_gives_up_after_max_tries_without_a_final_back_off():
+    client, sleeps = make_client(*[FakeResponse(status_code=429)] * 5)
 
     with pytest.raises(PlotSourceError):
         client.request_json("GET", "https://example.org")
+    back_offs = [s for s in sleeps if s != 1.0]
+    assert back_offs == [2, 4, 8]  # 2**1..2**3; 2**0 is hidden among the spacing
+
+
+def test_client_caps_retry_after():
+    client, sleeps = make_client(
+        FakeResponse(status_code=503, headers={"Retry-After": "3600"}),
+        FakeResponse({"ok": True}),
+    )
+
+    client.request_json("GET", "https://example.org")
+    assert sleeps[0] == plot_sources.MAX_RETRY_AFTER
 
 
 def test_make_client_requires_contact(monkeypatch):
@@ -192,6 +208,16 @@ def test_imdb_to_titles_batches_and_skips_unmatched():
     assert titles == {"tt1": "One", "tt3": "Three"}
     queries = [kwargs["data"]["query"] for _, _, kwargs in client.session.calls]
     assert '"tt1" "tt2"' in queries[0] and '"tt3"' in queries[1]
+
+
+def test_imdb_to_titles_leaves_out_malformed_ids():
+    client, _ = make_client(sparql_response(sparql_row("tt1", "One")))
+
+    titles = plot_sources.imdb_to_titles(client, ["tt1", 'tt2" }', "nm3"])
+
+    assert titles == {"tt1": "One"}
+    query = client.session.calls[0][2]["data"]["query"]
+    assert '"tt1"' in query and "tt2" not in query and "nm3" not in query
 
 
 def test_imdb_to_titles_prefers_film_then_shortest_title():
@@ -365,3 +391,12 @@ def test_fetch_omdb_plot_requires_api_key(monkeypatch):
 
     with pytest.raises(PlotSourceError, match="OMDB_API_KEY"):
         plot_sources.fetch_omdb_plot(client, "tt1")
+
+
+def test_fetch_omdb_plot_raises_when_omdb_fails():
+    client, _ = make_client(
+        FakeResponse({"Response": "False", "Error": "Error getting data."})
+    )
+
+    with pytest.raises(PlotSourceError, match="Error getting data"):
+        plot_sources.fetch_omdb_plot(client, "tt1", api_key="k")
