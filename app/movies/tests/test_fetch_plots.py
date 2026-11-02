@@ -4,6 +4,7 @@ import pytest
 from django.core.management import CommandError, call_command
 
 from movies import plot_sources
+from movies.management.commands import fetch_plots
 from movies.models import MoviePlot, PlotSource
 
 from .factories import MovieFactory, MoviePlotFactory
@@ -38,7 +39,7 @@ class FakeWeb:
 
     def fetch_extract(self, client, title, revid, cache_dir):
         self.extract_requests.append(title)
-        return self.extracts[title]
+        return self.extracts[title], self.revisions[title]
 
     def article(self, movie, title, revid, plot=PLOT):
         self.titles[movie.imdbid] = title
@@ -232,3 +233,54 @@ def test_whitespace_short_plot_is_not_saved(web):
 
     assert not MoviePlot.objects.exists()
     assert lines[-1] == "movies 1 | wikipedia 0 | omdb 0 | missing 1 | unchanged 0"
+
+
+@pytest.mark.django_db
+def test_stores_the_revision_the_extract_came_from(web, monkeypatch):
+    movie = MovieFactory()
+    web.article(movie, "Heat", 100)
+    # Edited between the revision lookup and the extract request.
+    monkeypatch.setattr(
+        plot_sources,
+        "latest_revisions",
+        lambda client, titles: {t: (t, 99) for t in titles},
+    )
+
+    run()
+
+    assert MoviePlot.objects.get(pk=movie.pk).source_revid == 100
+
+
+@pytest.mark.django_db
+def test_stops_after_too_many_failures_in_a_row(web, monkeypatch):
+    monkeypatch.setattr(fetch_plots, "MAX_ERRORS_IN_A_ROW", 3)
+    movies = MovieFactory.create_batch(5, plot="Short stored plot.")
+    calls = []
+
+    def fail(client, imdbid):
+        calls.append(imdbid)
+        raise plot_sources.PlotSourceError("HTTP 503 from https://www.omdbapi.com/")
+
+    monkeypatch.setattr(plot_sources, "fetch_omdb_plot", fail)
+
+    with pytest.raises(CommandError, match="3 failures in a row, at movie 3/5"):
+        run()
+    assert calls == [m.imdbid for m in sorted(movies, key=lambda m: m.imdbid)[:3]]
+
+
+@pytest.mark.django_db
+def test_a_success_resets_the_failure_count(web, monkeypatch):
+    monkeypatch.setattr(fetch_plots, "MAX_ERRORS_IN_A_ROW", 2)
+    first, second, third = sorted(
+        MovieFactory.create_batch(3, plot="Short."), key=lambda m: m.imdbid
+    )
+    web.article(second, "Heat", 100)
+
+    def fail(client, imdbid):
+        raise plot_sources.PlotSourceError("HTTP 503")
+
+    monkeypatch.setattr(plot_sources, "fetch_omdb_plot", fail)
+
+    lines = run()
+
+    assert lines[-2] == f"errors (2): {first.imdbid} {third.imdbid}"

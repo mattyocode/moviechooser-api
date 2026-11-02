@@ -45,6 +45,8 @@ RETRY_STATUSES = {429, 500, 502, 503, 504}
 RETRY_API_ERRORS = {"maxlag", "ratelimited"}
 # A server asking for a longer wait is treated as down rather than waited on.
 MAX_RETRY_AFTER = 120
+# OMDb's answers for an ID it will never find, as opposed to a failed lookup.
+OMDB_NOT_FOUND = {"Movie not found!", "Incorrect IMDb ID."}
 IMDB_ID = re.compile(r"tt\d+")
 
 
@@ -117,9 +119,12 @@ class PoliteClient:
                         problem = f"API error {code!r}"
                         retry_after = retry_after_seconds(response, 5)
 
+            if retry_after > MAX_RETRY_AFTER:
+                raise PlotSourceError(
+                    f"{url} asked to wait {retry_after:.0f}s, treating it as down."
+                )
             if attempt + 1 == self.max_tries:
                 break
-            retry_after = min(retry_after, MAX_RETRY_AFTER)
             logger.warning(f"{problem} from {url}, backing off {retry_after}s")
             self.sleep(retry_after)
         raise PlotSourceError(f"Gave up on {url} after {self.max_tries} tries.")
@@ -248,29 +253,43 @@ def _read_cache(path):
     return data if _has_pages(data) else None
 
 
-def fetch_extract(client, title, revid, cache_dir):
-    """Plain text of the whole article, cached on disk by title and revision."""
+def _cache_path(cache_dir, title, revid):
     key = hashlib.sha1(title.encode("utf-8")).hexdigest()[:16]
-    path = Path(cache_dir) / f"{key}-{revid}.json"
-    data = _read_cache(path)
-    if data is None:
+    return Path(cache_dir) / f"{key}-{revid}.json"
+
+
+def _page_revid(data):
+    pages = data["query"]["pages"]
+    return pages[0].get("lastrevid") if pages else None
+
+
+def fetch_extract(client, title, revid, cache_dir):
+    """(plain text of the whole article, the revision it came from).
+
+    `revid` is the revision seen earlier in the run. The article may have been
+    edited since, so the extract is fetched together with its own revision ID,
+    and that ID is what the response is cached and returned under.
+    """
+    data = _read_cache(_cache_path(cache_dir, title, revid))
+    if data is None or _page_revid(data) != revid:
         data = _wiki_query(
             client,
-            prop="extracts",
+            prop="extracts|info",
             explaintext=1,
             exsectionformat="wiki",
             redirects=1,
             titles=title,
         )
-        if not _has_pages(data):
-            raise PlotSourceError(f"No pages in the extract response for {title!r}")
+        if not _has_pages(data) or _page_revid(data) is None:
+            raise PlotSourceError(f"No page in the extract response for {title!r}")
+        revid = _page_revid(data)
         # Write then rename, so an interrupted run never leaves half a file.
+        path = _cache_path(cache_dir, title, revid)
         path.parent.mkdir(parents=True, exist_ok=True)
         tmp = path.with_name(f"{path.name}.tmp")
         tmp.write_text(json.dumps(data))
         os.replace(tmp, path)
-    pages = data["query"]["pages"]
-    return pages[0].get("extract", "") if pages else ""
+    return data["query"]["pages"][0].get("extract", ""), revid
 
 
 def _level2_heading(line):
@@ -318,6 +337,8 @@ def fetch_omdb_plot(client, imdbid, api_key=None):
         OMDB_URL,
         params={"i": imdbid, "plot": "full", "apikey": api_key or omdb_api_key()},
     )
+    if data.get("Error") in OMDB_NOT_FOUND:
+        return None
     if data.get("Response") != "True":
         raise PlotSourceError(f"OMDb error: {data.get('Error', 'no response')}")
     plot = (data.get("Plot") or "").strip()

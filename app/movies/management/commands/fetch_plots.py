@@ -4,6 +4,10 @@ from django.core.management.base import BaseCommand, CommandError
 from movies import plot_sources
 from movies.models import Movie, MoviePlot, PlotSource
 
+# A source that fails this many movies in a row is down: stop instead of
+# retrying it for every remaining movie.
+MAX_ERRORS_IN_A_ROW = 20
+
 
 class Command(BaseCommand):
     help = (
@@ -26,7 +30,9 @@ class Command(BaseCommand):
         parser.add_argument(
             "--force",
             action="store_true",
-            help="Re-fetch even when the article revision is unchanged.",
+            help="Re-process every movie, even when its article revision is "
+            "unchanged. Wikipedia responses cached for that revision are reused; "
+            "delete --cache-dir to fetch them again.",
         )
         parser.add_argument(
             "--cache-dir",
@@ -41,7 +47,9 @@ class Command(BaseCommand):
         if options["limit"] is not None:
             movies = movies[: options["limit"]]
         movies = list(movies)
-        existing = MoviePlot.objects.in_bulk([m.imdbid for m in movies])
+        existing = MoviePlot.objects.only("source", "source_revid").in_bulk(
+            [m.imdbid for m in movies]
+        )
 
         try:
             client = plot_sources.make_client()
@@ -57,6 +65,7 @@ class Command(BaseCommand):
         self.unchanged = 0
         # Each movie's source once this run is done (or would be, for --dry-run).
         self.sources = {imdbid: plot.source for imdbid, plot in existing.items()}
+        in_a_row = 0
         for i, movie in enumerate(movies, 1):
             try:
                 self.update_movie(
@@ -70,6 +79,15 @@ class Command(BaseCommand):
             except Exception as e:
                 self.errors.append(movie.imdbid)
                 self.stderr.write(f"{movie.imdbid}: {e}")
+                in_a_row += 1
+                if in_a_row == MAX_ERRORS_IN_A_ROW:
+                    self.report(len(movies), options["dry_run"])
+                    raise CommandError(
+                        f"Stopped after {in_a_row} failures in a row, at movie "
+                        f"{i}/{len(movies)}. Last error: {e}"
+                    )
+            else:
+                in_a_row = 0
             if i % 50 == 0:
                 self.stderr.write(f"processed {i}/{len(movies)}")
 
@@ -88,7 +106,7 @@ class Command(BaseCommand):
             ):
                 self.unchanged += 1
                 return
-            extract = plot_sources.fetch_extract(
+            extract, revid = plot_sources.fetch_extract(
                 client, resolved, revid, options["cache_dir"]
             )
             text = plot_sources.extract_plot_section(extract)

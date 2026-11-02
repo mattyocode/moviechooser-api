@@ -37,6 +37,7 @@ class MovieAdmin(admin.ModelAdmin):
 class MoviePlotAdmin(admin.ModelAdmin):
     list_display = ("movie", "source", "model_name", "updated_at")
     list_filter = ("source", "model_name")
+    list_select_related = ("movie",)
     search_fields = ("movie__imdbid", "movie__title")
     exclude = ("embedding",)
 

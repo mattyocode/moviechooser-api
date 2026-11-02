@@ -157,14 +157,14 @@ def test_client_gives_up_after_max_tries_without_a_final_back_off():
     assert back_offs == [2, 4, 8]  # 2**1..2**3; 2**0 is hidden among the spacing
 
 
-def test_client_caps_retry_after():
+def test_client_gives_up_when_asked_to_wait_too_long():
     client, sleeps = make_client(
         FakeResponse(status_code=503, headers={"Retry-After": "3600"}),
-        FakeResponse({"ok": True}),
     )
 
-    client.request_json("GET", "https://example.org")
-    assert sleeps[0] == plot_sources.MAX_RETRY_AFTER
+    with pytest.raises(PlotSourceError, match="asked to wait 3600s"):
+        client.request_json("GET", "https://example.org")
+    assert sleeps == []
 
 
 def test_make_client_requires_contact(monkeypatch):
@@ -280,20 +280,24 @@ def test_latest_revisions_stops_on_a_redirect_loop():
 # Extracts and cache
 
 
+def extract_response(revid, text="text"):
+    page = {"title": "Film", "lastrevid": revid, "extract": text}
+    return FakeResponse({"query": {"pages": [page]}})
+
+
 def test_fetch_extract_uses_cache_on_second_call(tmp_path):
-    data = {"query": {"pages": [{"title": "Film", "extract": "== Plot ==\nText"}]}}
-    client, _ = make_client(FakeResponse(data))
+    client, _ = make_client(extract_response(7, "== Plot ==\nText"))
 
     first = plot_sources.fetch_extract(client, "Film", 7, tmp_path)
     second = plot_sources.fetch_extract(client, "Film", 7, tmp_path)
 
-    assert first == second == "== Plot ==\nText"
+    assert first == second == ("== Plot ==\nText", 7)
     assert len(client.session.calls) == 1
+    assert client.session.calls[0][2]["params"]["prop"] == "extracts|info"
 
 
 def test_fetch_extract_refetches_new_revision(tmp_path):
-    data = {"query": {"pages": [{"title": "Film", "extract": "text"}]}}
-    client, _ = make_client(FakeResponse(data), FakeResponse(data))
+    client, _ = make_client(extract_response(7), extract_response(8))
 
     plot_sources.fetch_extract(client, "Film", 7, tmp_path)
     plot_sources.fetch_extract(client, "Film", 8, tmp_path)
@@ -301,24 +305,44 @@ def test_fetch_extract_refetches_new_revision(tmp_path):
     assert len(client.session.calls) == 2
 
 
-def test_fetch_extract_does_not_cache_a_response_without_pages(tmp_path):
-    client, _ = make_client(FakeResponse({"batchcomplete": True}))
+def test_fetch_extract_returns_and_caches_the_revision_it_got(tmp_path):
+    # The article was edited after the run read revision 7.
+    client, _ = make_client(extract_response(8, "newer"))
+
+    assert plot_sources.fetch_extract(client, "Film", 7, tmp_path) == ("newer", 8)
+    assert plot_sources.fetch_extract(client, "Film", 8, tmp_path) == ("newer", 8)
+    assert len(client.session.calls) == 1
+    assert [p.name.split("-")[1] for p in tmp_path.iterdir()] == ["8.json"]
+
+
+@pytest.mark.parametrize(
+    "response", [{"batchcomplete": True}, {"query": {"pages": [{"title": "F"}]}}]
+)
+def test_fetch_extract_does_not_cache_a_response_without_a_page(tmp_path, response):
+    client, _ = make_client(FakeResponse(response))
 
     with pytest.raises(PlotSourceError):
         plot_sources.fetch_extract(client, "Film", 7, tmp_path)
     assert list(tmp_path.iterdir()) == []
 
 
-@pytest.mark.parametrize("cached", ['{"query": {"pa', '{"error": {"code": "x"}}'])
+@pytest.mark.parametrize(
+    "cached",
+    [
+        '{"query": {"pa',
+        '{"error": {"code": "x"}}',
+        # Written before responses carried their revision.
+        '{"query": {"pages": [{"title": "Film", "extract": "old"}]}}',
+    ],
+)
 def test_fetch_extract_refetches_a_bad_cache_file(tmp_path, cached):
-    data = {"query": {"pages": [{"title": "Film", "extract": "text"}]}}
-    client, _ = make_client(FakeResponse(data))
+    client, _ = make_client(extract_response(7))
     plot_sources.fetch_extract(client, "Film", 7, tmp_path)
     (path,) = tmp_path.iterdir()
     path.write_text(cached)
-    client.session.responses.append(FakeResponse(data))
+    client.session.responses.append(extract_response(7))
 
-    assert plot_sources.fetch_extract(client, "Film", 7, tmp_path) == "text"
+    assert plot_sources.fetch_extract(client, "Film", 7, tmp_path) == ("text", 7)
     assert len(client.session.calls) == 2
     assert [p.name for p in tmp_path.iterdir()] == [path.name]
 
@@ -400,3 +424,10 @@ def test_fetch_omdb_plot_raises_when_omdb_fails():
 
     with pytest.raises(PlotSourceError, match="Error getting data"):
         plot_sources.fetch_omdb_plot(client, "tt1", api_key="k")
+
+
+@pytest.mark.parametrize("error", ["Movie not found!", "Incorrect IMDb ID."])
+def test_fetch_omdb_plot_none_when_omdb_will_never_find_it(error):
+    client, _ = make_client(FakeResponse({"Response": "False", "Error": error}))
+
+    assert plot_sources.fetch_omdb_plot(client, "tt1", api_key="k") is None
