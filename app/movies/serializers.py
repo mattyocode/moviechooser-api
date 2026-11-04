@@ -57,6 +57,9 @@ class MovieSerializer(serializers.ModelSerializer):
     avg_rating = serializers.SerializerMethodField(read_only=True)
 
     def get_avg_rating(self, movie):
+        # The movie views annotate it; lists nest plain movies, so fall back.
+        if hasattr(movie, "avg_rating"):
+            return movie.avg_rating
         if hasattr(movie, "reviews"):
             return movie.reviews.aggregate(avg_score=Avg("score"))["avg_score"]
 
@@ -80,3 +83,10 @@ class MovieSerializer(serializers.ModelSerializer):
             "on_list",
         )
         read_only_fields = ("__all__",)
+
+
+class SimilarMovieSerializer(MovieSerializer):
+    similarity = serializers.FloatField(read_only=True)
+
+    class Meta(MovieSerializer.Meta):
+        fields = MovieSerializer.Meta.fields + ("similarity",)

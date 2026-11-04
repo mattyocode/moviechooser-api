@@ -3,7 +3,7 @@ from io import StringIO
 
 import numpy as np
 import pytest
-from django.core.management import call_command
+from django.core.management import CommandError, call_command
 
 from movies import embeddings
 from movies.models import Genre, Movie, MoviePlot
@@ -30,15 +30,18 @@ def summary(
     plot_left=0,
     premise_left=0,
     plot_empty=0,
+    plot_cleared=0,
+    total=None,
     dry=False,
 ):
     verb, clear_verb = (
         ("would embed", "would clear") if dry else ("embedded", "cleared")
     )
-    total = plot + plot_skipped + plot_left + plot_empty
+    if total is None:
+        total = plot + plot_skipped + plot_left + plot_empty
     return (
         f"plot: {verb} {plot}, skipped {plot_skipped}, left {plot_left}, "
-        f"empty {plot_empty} | "
+        f"empty {plot_empty}, {clear_verb} {plot_cleared} | "
         f"premise: {verb} {premise}, skipped {premise_skipped}, "
         f"left {premise_left}, empty {empty}, {clear_verb} {cleared} | "
         f"total {total}"
@@ -219,6 +222,47 @@ def test_premise_vector_is_cleared_when_premise_becomes_empty():
     assert plot.premise_model_name == ""
     assert plot.premise_text_hash == ""
     assert run() == summary(0, 1, 0, 0, empty=1)
+
+
+@pytest.mark.django_db
+def test_plot_vector_is_cleared_when_plot_text_becomes_empty():
+    (plot,) = make_plots(1)
+    run()
+
+    MoviePlot.objects.filter(pk=plot.pk).update(text="")
+
+    assert run("--dry-run") == summary(
+        0, 0, 0, 1, plot_empty=1, plot_cleared=1, dry=True
+    )
+    assert run() == summary(0, 0, 0, 1, plot_empty=1, plot_cleared=1)
+    plot.refresh_from_db()
+    assert plot.embedding is None
+    assert plot.model_name == ""
+    assert plot.embedded_text_hash == ""
+    assert plot.premise_embedding is not None
+    assert run() == summary(0, 0, 0, 1, plot_empty=1)
+
+
+@pytest.mark.django_db
+def test_limit_covers_embeds_and_clears_together():
+    plots = make_plots(3)
+    run()
+    MoviePlot.objects.filter(pk=plots[0].pk).update(text="A new plot.")
+    MoviePlot.objects.filter(pk__in=[p.pk for p in plots[1:]]).update(text="")
+
+    assert run("--limit", "2") == summary(
+        1, 0, 0, 3, plot_empty=2, plot_cleared=1, plot_left=1, total=3
+    )
+    assert run() == summary(0, 1, 0, 3, plot_empty=2, plot_cleared=1)
+
+
+@pytest.mark.django_db
+def test_negative_limit_is_rejected():
+    make_plots(1)
+
+    with pytest.raises(CommandError, match="must be 0 or more"):
+        run("--limit", "-1")
+    assert not MoviePlot.objects.filter(embedding__isnull=False).exists()
 
 
 @pytest.mark.django_db
