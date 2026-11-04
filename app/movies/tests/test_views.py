@@ -3,6 +3,8 @@ import json
 from unittest import mock
 
 import pytest
+from django.db import connection
+from django.test.utils import CaptureQueriesContext
 
 from accounts.models import CustomUser
 from lists.models import Item, List
@@ -57,6 +59,22 @@ def test_get_all_movies(client, add_movie):
     assert resp.status_code == 200
     assert movie_one.title in json.dumps(resp.data)
     assert movie_two.title in json.dumps(resp.data)
+
+
+@pytest.mark.django_db
+def test_movie_list_avg_rating_queries_do_not_grow_with_movies(client):
+    def avg_queries():
+        with CaptureQueriesContext(connection) as queries:
+            resp = client.get("/api/movies/")
+        return resp, sum("AVG(" in q["sql"] for q in queries.captured_queries)
+
+    MovieFactory.create(review=[60, 90])
+    _, one_movie = avg_queries()
+    MovieFactory.create_batch(2, review=[60, 90])
+    resp, three_movies = avg_queries()
+
+    assert [movie["avg_rating"] for movie in resp.data["results"]] == [75, 75, 75]
+    assert three_movies == one_movie
 
 
 @pytest.mark.django_db
