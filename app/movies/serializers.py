@@ -80,3 +80,10 @@ class MovieSerializer(serializers.ModelSerializer):
             "on_list",
         )
         read_only_fields = ("__all__",)
+
+
+class SimilarMovieSerializer(MovieSerializer):
+    similarity = serializers.FloatField(read_only=True)
+
+    class Meta(MovieSerializer.Meta):
+        fields = MovieSerializer.Meta.fields + ("similarity",)

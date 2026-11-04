@@ -44,6 +44,10 @@ docker compose -f docker-compose.prod.yml exec djangogunicorn python manage.py f
 docker compose -f docker-compose.prod.yml exec djangogunicorn python manage.py build_plot_embeddings
 ```
 
+### Similar movies
+
+`GET /api/movies/<slug>/similar/?limit=6` returns a plain array of the movies nearest to the given one, each with the usual movie fields plus `similarity`. It ranks by `0.5 × plot similarity + 0.5 × premise similarity` (1 − cosine distance for each vector), highest first, and applies the same quality bar as the movie list (average review ≥ 40, a poster). `limit` is clamped to 1–12, and anything that isn't an integer means 6. An unknown slug is a 404. A movie missing either vector gets `[]`, and so does every movie until both `build_plot_embeddings` passes have run.
+
 Wikipedia text is licensed CC BY-SA. It is used only for search and is never returned by the API. Anything that shows plot text must attribute it with the stored `source_url` and `source_revid`, and link the licence.
 
 ## Requirements
