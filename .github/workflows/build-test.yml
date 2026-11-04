@@ -138,12 +138,18 @@ jobs:
           echo "BRANCH_REF=${{ github.head_ref }}" >> $GITHUB_ENV
           ${{ env.BRANCH_REF}}
 
+      # Host network so the container reaches the pgvector service on localhost.
+      # Without the SQL_* vars, settings fall back to SQLite and the pgvector
+      # migration fails.
       - name: Pull image and run container
         env:
           SECRET_KEY: ${{ secrets.SECRET_KEY }}
+          SQL_ENGINE: django.db.backends.postgresql
         run: |
           docker pull ${{ env.WEB_IMAGE }}:${{ env.BRANCH_REF}}
-          docker run -d -p 8000:8000 -e SECRET_KEY="$SECRET_KEY" \
+          docker run -d --network host -e SECRET_KEY="$SECRET_KEY" \
+            -e SQL_ENGINE -e SQL_DATABASE -e SQL_USER -e SQL_PASSWORD \
+            -e SQL_HOST -e SQL_PORT -e DATABASE \
             --name latest_image ${{ env.WEB_IMAGE }}:"${{ env.BRANCH_REF}}"
 
       - name: Run tests
