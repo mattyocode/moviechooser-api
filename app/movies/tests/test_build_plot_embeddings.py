@@ -3,7 +3,7 @@ from io import StringIO
 
 import numpy as np
 import pytest
-from django.core.management import call_command
+from django.core.management import CommandError, call_command
 
 from movies import embeddings
 from movies.models import Genre, Movie, MoviePlot
@@ -254,6 +254,15 @@ def test_limit_covers_embeds_and_clears_together():
         1, 0, 0, 3, plot_empty=2, plot_cleared=1, plot_left=1, total=3
     )
     assert run() == summary(0, 1, 0, 3, plot_empty=2, plot_cleared=1)
+
+
+@pytest.mark.django_db
+def test_negative_limit_is_rejected():
+    make_plots(1)
+
+    with pytest.raises(CommandError, match="must be 0 or more"):
+        run("--limit", "-1")
+    assert not MoviePlot.objects.filter(embedding__isnull=False).exists()
 
 
 @pytest.mark.django_db

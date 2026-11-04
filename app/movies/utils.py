@@ -4,12 +4,12 @@ import re
 from datetime import datetime
 
 import requests
-from django.db.models import Avg, Exists, OuterRef, Value
+from django.db.models import Avg, Exists, FloatField, OuterRef, Subquery, Value
 
 from lists.models import Item
 
 from .constants import ReviewSources
-from .models import Movie
+from .models import Movie, Review
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +20,18 @@ OMDBID_URL = "http://www.omdbapi.com/?i={imdbid}&apikey={API_KEY}"
 
 def annotated_movies(user):
     """Movies with avg_rating and on_list (on one of the user's lists)."""
-    movies_qs = Movie.objects.annotate(avg_rating=Avg("reviews__score"))
+    # A subquery, not Avg("reviews__score"): that adds a GROUP BY, which makes
+    # Postgres evaluate other annotations (like /similar/'s two cosine
+    # distances) once per review row instead of once per movie.
+    avg_rating = (
+        Review.objects.filter(movie=OuterRef("pk"))
+        .values("movie")
+        .annotate(avg=Avg("score"))
+        .values("avg")
+    )
+    movies_qs = Movie.objects.annotate(
+        avg_rating=Subquery(avg_rating, output_field=FloatField())
+    )
     if user.is_authenticated:
         item = Item.objects.filter(movie=OuterRef("pk"), _list__owner=user)
         return movies_qs.annotate(on_list=Exists(item))
