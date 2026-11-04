@@ -1,6 +1,6 @@
 import random
 
-from django.db.models import Count
+from django.db.models import Count, Q
 from django.http import Http404
 from django.shortcuts import get_object_or_404
 from pgvector.django import CosineDistance
@@ -54,6 +54,21 @@ def clamp_limit(raw):
     return max(1, min(SIMILAR_MAX_LIMIT, limit))
 
 
+def current_vectors(prefix=""):
+    """Both vectors present and from the current model, so comparable.
+
+    prefix is the path to MoviePlot, e.g. "plot_data__" from Movie.
+    """
+    return Q(
+        **{
+            f"{prefix}model_name": embeddings.MODEL_NAME,
+            f"{prefix}premise_model_name": embeddings.MODEL_NAME,
+            f"{prefix}embedding__isnull": False,
+            f"{prefix}premise_embedding__isnull": False,
+        }
+    )
+
+
 def source_plot(slug):
     """The movie's MoviePlot when both vectors are from the current model.
 
@@ -63,13 +78,7 @@ def source_plot(slug):
     there is nothing to compare; raises Http404 for an unknown slug.
     """
     plot = (
-        MoviePlot.objects.filter(
-            movie__slug=slug,
-            model_name=embeddings.MODEL_NAME,
-            premise_model_name=embeddings.MODEL_NAME,
-            embedding__isnull=False,
-            premise_embedding__isnull=False,
-        )
+        MoviePlot.objects.filter(current_vectors(), movie__slug=slug)
         .only("embedding", "premise_embedding")
         .first()
     )
@@ -84,8 +93,10 @@ class SimilarMovies(APIView):
         if source is None:
             return Response([])
 
-        # Scores every movie: about 20ms for 3,000 movies (2026-11-04), exact,
-        # and simpler than a candidate pass through the HNSW indexes.
+        # Scores every movie: exact, and simpler than a candidate pass through
+        # the HNSW indexes. On dev with 3,000 movies (2026-11-04) this query
+        # takes about 7ms, and the whole view in-process about 13ms; HTTP adds
+        # more.
         similarity = SIMILARITY_PLOT_WEIGHT * (
             1 - CosineDistance("plot_data__embedding", source.embedding)
         ) + (1 - SIMILARITY_PLOT_WEIGHT) * (
@@ -94,12 +105,7 @@ class SimilarMovies(APIView):
         movies_qs = (
             recommendable_movies(request.user)
             .exclude(pk=source.pk)
-            .filter(
-                plot_data__model_name=embeddings.MODEL_NAME,
-                plot_data__premise_model_name=embeddings.MODEL_NAME,
-                plot_data__embedding__isnull=False,
-                plot_data__premise_embedding__isnull=False,
-            )
+            .filter(current_vectors("plot_data__"))
             .annotate(similarity=similarity)
             .order_by("-similarity", "slug")
             .prefetch_related("actors", "director", "genre", "ondemand", "reviews")

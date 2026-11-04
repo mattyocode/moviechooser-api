@@ -1,3 +1,4 @@
+from argparse import ArgumentTypeError
 from typing import NamedTuple
 
 from django.core.management.base import BaseCommand
@@ -44,6 +45,13 @@ def is_stale(plot: MoviePlot, vector: Vector, current_hash: str) -> bool:
     )
 
 
+def non_negative_int(value):
+    number = int(value)
+    if number < 0:
+        raise ArgumentTypeError("must be 0 or more")
+    return number
+
+
 class Command(BaseCommand):
     help = (
         "Embed MoviePlot text and each movie's premise (genres plus OMDb short "
@@ -52,7 +60,11 @@ class Command(BaseCommand):
     )
 
     def add_arguments(self, parser):
-        parser.add_argument("--limit", type=int, help="Embed at most N rows per pass.")
+        parser.add_argument(
+            "--limit",
+            type=non_negative_int,
+            help="Embed or clear at most N rows per pass, embeds first.",
+        )
         parser.add_argument(
             "--imdbid", action="append", help="Only this movie (repeatable)."
         )
