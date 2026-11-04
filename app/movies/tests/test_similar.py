@@ -1,9 +1,12 @@
 import numpy as np
 import pytest
+from django.db import connection
+from django.test.utils import CaptureQueriesContext
 
 from accounts.models import CustomUser
 from lists.models import Item, List
 from movies import embeddings
+from movies.models import MoviePlot
 
 from .factories import MovieFactory, MoviePlotFactory
 
@@ -31,7 +34,14 @@ def movie_with_vectors():
         movie = MovieFactory.create(
             slug=slug, title=slug.title(), review=review or [80], **kwargs
         )
-        MoviePlotFactory.create(movie=movie, embedding=plot, premise_embedding=premise)
+        plot_data = MoviePlotFactory.create(
+            movie=movie, embedding=plot, premise_embedding=premise
+        )
+        # Embedded by the current model, as build_plot_embeddings would leave it.
+        MoviePlot.objects.filter(pk=plot_data.pk).update(
+            model_name=embeddings.MODEL_NAME,
+            premise_model_name=embeddings.MODEL_NAME,
+        )
         return movie
 
     return _movie_with_vectors
@@ -242,3 +252,66 @@ def test_similar_returns_fewer_than_limit(client, target, movie_with_vectors):
     resp = client.get(similar_url("target"))
 
     assert slugs(resp) == ["one", "two"]
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("field", ["model_name", "premise_model_name"])
+def test_similar_empty_when_movie_has_a_vector_from_another_model(
+    client, target, movie_with_vectors, field
+):
+    movie_with_vectors("other", vec(1, 0.5), vec(1, 0.5))
+    MoviePlot.objects.filter(pk=target.pk).update(**{field: "old/model"})
+
+    resp = client.get(similar_url("target"))
+
+    assert resp.status_code == 200
+    assert resp.data == []
+
+
+@pytest.mark.django_db
+def test_similar_still_uses_vectors_from_changed_text(
+    client, target, movie_with_vectors
+):
+    # Roughly right until build_plot_embeddings re-embeds, rather than empty.
+    other = movie_with_vectors("other", vec(1, 0.5), vec(1, 0.5))
+    MoviePlot.objects.filter(pk__in=[target.pk, other.pk]).update(
+        text="A plot rewritten since it was embedded."
+    )
+
+    resp = client.get(similar_url("target"))
+
+    assert slugs(resp) == ["other"]
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("field", ["model_name", "premise_model_name"])
+def test_similar_excludes_candidates_from_another_model(
+    client, target, movie_with_vectors, field
+):
+    old = movie_with_vectors("old", vec(1, 0.1), vec(1, 0.1))
+    movie_with_vectors("current", vec(1, 1), vec(1, 1))
+    MoviePlot.objects.filter(pk=old.pk).update(**{field: "old/model"})
+
+    resp = client.get(similar_url("target"))
+
+    assert slugs(resp) == ["current"]
+
+
+@pytest.mark.django_db
+def test_similar_query_count_does_not_grow_with_results(client, many_candidates):
+    with CaptureQueriesContext(connection) as few:
+        client.get(similar_url("target", "?limit=2"))
+    with CaptureQueriesContext(connection) as many:
+        resp = client.get(similar_url("target", "?limit=12"))
+
+    assert len(resp.data) == 12
+    assert len(many) == len(few)
+
+
+@pytest.mark.django_db
+def test_similar_avg_rating_is_mean_review_score(client, target, movie_with_vectors):
+    movie_with_vectors("other", vec(1, 0.5), vec(1, 0.5), review=[60, 90])
+
+    resp = client.get(similar_url("target"))
+
+    assert resp.data[0]["avg_rating"] == pytest.approx(75)
