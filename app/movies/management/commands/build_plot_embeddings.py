@@ -26,6 +26,16 @@ PREMISE = Vector(
 )
 
 
+class Pass(NamedTuple):
+    """One vector's share of a run."""
+
+    todo: list
+    clear: list
+    skipped: int
+    left: int
+    empty: int
+
+
 def is_stale(plot: MoviePlot, vector: Vector, current_hash: str) -> bool:
     return (
         getattr(plot, vector.vector) is None
@@ -76,54 +86,56 @@ class Command(BaseCommand):
                 embeddings.text_hash(premise) if premise else "",
             )
 
-        def stale(vector, rows):
-            return [
-                p
-                for p in rows
-                if options["force"] or is_stale(p, vector, texts[vector][p.pk][1])
-            ]
-
-        # Rows with no text can't be embedded: count them as "empty" so one bad
-        # row doesn't stop the rest of the pass.
-        with_text = {
-            vector: [p for p in plots if texts[vector][p.pk][0].strip()]
+        passes = {
+            vector: self.plan(vector, plots, texts[vector], options)
             for vector in (PLOT, PREMISE)
         }
-        plot_todo = stale(PLOT, with_text[PLOT])
-        premise_todo = stale(PREMISE, with_text[PREMISE])
-        plot_empty = len(plots) - len(with_text[PLOT])
-        premise_empty = [p for p in plots if not texts[PREMISE][p.pk][0]]
-        # No premise text: drop any vector left over from an earlier premise.
-        to_clear = [p for p in premise_empty if p.premise_embedding is not None]
-        # Stale rows cut off by --limit are reported as "left", not "skipped".
-        plot_stale, premise_stale, clear_stale = (
-            len(plot_todo),
-            len(premise_todo),
-            len(to_clear),
-        )
-        if options["limit"] is not None:
-            plot_todo = plot_todo[: options["limit"]]
-            premise_todo = premise_todo[: options["limit"]]
-            to_clear = to_clear[: options["limit"]]
 
         if not options["dry_run"]:
-            self.embed(PREMISE, premise_todo, texts[PREMISE], options["batch_size"])
-            self.clear(PREMISE, to_clear)
-            self.embed(PLOT, plot_todo, texts[PLOT], options["batch_size"])
+            for vector in (PREMISE, PLOT):
+                self.embed(
+                    vector, passes[vector].todo, texts[vector], options["batch_size"]
+                )
+                self.clear(vector, passes[vector].clear)
 
         verb = "would embed" if options["dry_run"] else "embedded"
         clear_verb = "would clear" if options["dry_run"] else "cleared"
-        total = len(plots)
-        plot_left = plot_stale - len(plot_todo)
-        premise_left = premise_stale - len(premise_todo) + clear_stale - len(to_clear)
-        self.stdout.write(
-            f"plot: {verb} {len(plot_todo)}, "
-            f"skipped {total - plot_stale - plot_empty}, left {plot_left}, "
-            f"empty {plot_empty} | "
-            f"premise: {verb} {len(premise_todo)}, "
-            f"skipped {total - premise_stale - len(premise_empty)}, "
-            f"left {premise_left}, empty {len(premise_empty)}, "
-            f"{clear_verb} {len(to_clear)} | total {total}"
+        reports = [
+            f"{vector.label}: {verb} {len(p.todo)}, skipped {p.skipped}, "
+            f"left {p.left}, empty {p.empty}, {clear_verb} {len(p.clear)}"
+            for vector, p in passes.items()
+        ]
+        self.stdout.write(" | ".join(reports + [f"total {len(plots)}"]))
+
+    def plan(self, vector, plots, texts, options):
+        """Which rows this run embeds and clears for one vector."""
+        # Rows with no text can't be embedded: count them as "empty" so one bad
+        # row doesn't stop the rest of the pass.
+        with_text = [p for p in plots if texts[p.pk][0].strip()]
+        todo = [
+            p
+            for p in with_text
+            if options["force"] or is_stale(p, vector, texts[p.pk][1])
+        ]
+        # No text: drop any vector left over from earlier text.
+        clear = [
+            p
+            for p in plots
+            if not texts[p.pk][0].strip() and getattr(p, vector.vector) is not None
+        ]
+        skipped = len(with_text) - len(todo)
+        stale = len(todo) + len(clear)
+        # Embeds and clears share --limit; rows it cuts off are reported as
+        # "left", not "skipped".
+        if options["limit"] is not None:
+            todo = todo[: options["limit"]]
+            clear = clear[: options["limit"] - len(todo)]
+        return Pass(
+            todo=todo,
+            clear=clear,
+            skipped=skipped,
+            left=stale - len(todo) - len(clear),
+            empty=len(plots) - len(with_text),
         )
 
     def clear(self, vector, todo):
