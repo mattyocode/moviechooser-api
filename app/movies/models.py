@@ -1,6 +1,7 @@
 from django.db import models
 from django.db.models.signals import pre_save
 from django.dispatch import receiver
+from pgvector.django import HnswIndex, VectorField
 
 from config.util import unique_slug
 
@@ -75,3 +76,39 @@ class Review(models.Model):
 
     def __str__(self):
         return self.source + "--" + str(self.score)
+
+
+class PlotSource(models.TextChoices):
+    WIKIPEDIA = "wikipedia"
+    OMDB = "omdb", "OMDb"
+
+
+class MoviePlot(models.Model):
+    """Long-form plot text and its embedding. Search only: never serialize."""
+
+    movie = models.OneToOneField(
+        Movie, primary_key=True, on_delete=models.CASCADE, related_name="plot_data"
+    )
+    source = models.CharField(max_length=12, choices=PlotSource.choices)
+    text = models.TextField()
+    source_url = models.URLField(max_length=500)
+    # enwiki lastrevid, for attribution and change detection. Null for OMDb.
+    source_revid = models.BigIntegerField(null=True, blank=True)
+    embedding = VectorField(dimensions=384, null=True, blank=True)
+    model_name = models.CharField(max_length=100, blank=True)
+    embedded_text_hash = models.CharField(max_length=64, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        indexes = [
+            HnswIndex(
+                name="movieplot_embedding_hnsw",
+                fields=["embedding"],
+                opclasses=["vector_cosine_ops"],
+                m=16,
+                ef_construction=64,
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.movie_id}--{self.source}"
