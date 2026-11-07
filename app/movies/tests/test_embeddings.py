@@ -6,6 +6,8 @@ import pytest
 
 from movies import embeddings
 
+from .factories import MovieWithGenreFactory
+
 
 def words(n, word="word"):
     return " ".join([word] * n)
@@ -81,3 +83,41 @@ def test_tests_use_fake_model_not_fastembed():
 
     assert type(embeddings.get_model()).__name__ == "FakeEmbeddingModel"
     assert "fastembed" not in sys.modules
+
+
+@pytest.mark.django_db
+def test_premise_text_sorts_genres_before_plot():
+    movie = MovieWithGenreFactory(
+        genre=["Thriller", "Action", "Crime"], plot="A getaway driver plans a heist."
+    )
+
+    assert (
+        embeddings.premise_text(movie)
+        == "Action, Crime, Thriller. A getaway driver plans a heist."
+    )
+
+
+@pytest.mark.django_db
+def test_premise_text_never_includes_title():
+    movie = MovieWithGenreFactory(
+        title="Driver", genre=["Action"], plot="A man drives cars for money."
+    )
+
+    assert "Driver" not in embeddings.premise_text(movie)
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "genres, plot, expected",
+    [
+        ([], "  A plot only.  ", "A plot only."),
+        (["Drama", "Comedy"], None, "Comedy, Drama"),
+        (["Drama"], "   ", "Drama"),
+        ([], None, ""),
+        ([], "", ""),
+    ],
+)
+def test_premise_text_with_missing_parts(genres, plot, expected):
+    movie = MovieWithGenreFactory(genre=genres, plot=plot)
+
+    assert embeddings.premise_text(movie) == expected

@@ -23,10 +23,14 @@ Lightsail's managed-database backups no longer apply, so back up with `pg_dump`.
 
 ## Plot data and embeddings
 
-Each movie has a `MoviePlot` row holding long-form plot text and a 384-dimension embedding (`BAAI/bge-small-en-v1.5` via fastembed, baked into the images at `/opt/fastembed`). Two idempotent management commands build them:
+Each movie has a `MoviePlot` row holding long-form plot text and two 384-dimension embeddings (`BAAI/bge-small-en-v1.5` via fastembed, baked into the images at `/opt/fastembed`). Two idempotent management commands build them:
 
 - `fetch_plots` matches movies to English Wikipedia articles by IMDb ID (Wikidata property P345) and stores the article's Plot section. When there is no article or no plot section, it falls back to OMDb's full plot. Articles whose revision hasn't changed are skipped, and raw responses are cached in `app/.plot_cache/`. It needs `WIKIMEDIA_CONTACT` set to a contact address for the Wikimedia User-Agent, and `OMDB_API_KEY` for the fallback. Transient failures (HTTP 429 and 5xx, timeouts, Wikipedia `maxlag` and `ratelimited`) are retried with back-off. It ends with a summary line: `movies N | wikipedia W | omdb O | missing M | unchanged U`, where the source counts are each movie's source after the run (or what it would be, with `--dry-run`).
-- `build_plot_embeddings` embeds rows with no embedding, a different model or changed text.
+- `build_plot_embeddings` fills two vectors per row, and only embeds a vector when it is missing, the model has changed or its text has changed:
+  - the plot vector, from `MoviePlot.text`;
+  - the premise vector, from the movie's genres (sorted) plus OMDb's short plot (`Movie.plot`), e.g. `Action, Crime, Drama. A young getaway driver …`. Averaging a long plot blurs a specific premise, which is why the second vector exists. The title is deliberately left out, because title words match unrelated movies (*Baby Driver* → *Babyteeth*). Search is meant to combine the two vectors at query time.
+
+  Each vector records its own model name, so a run that is interrupted or cut short by `--limit` is finished by the next one. It ends with `plot: embedded N, skipped S, left L, empty B | premise: embedded P, skipped Q, left R, empty E, cleared C | total T`. `skipped` rows are already up to date, and `left` counts stale rows that `--limit` cut off, which the next run will do. For the plot, `empty` counts rows with no plot text, which are skipped so they can't stop the rest of the pass. For the premise, `empty` counts movies with neither genres nor a plot, which get no premise vector, and `cleared` counts old premise vectors removed from those movies in this run.
 
 Both take `--limit`, `--imdbid` (repeatable), `--dry-run` and `--force`. `fetch_plots` also takes `--cache-dir`, and `build_plot_embeddings` takes `--batch-size`. Re-run both after adding movies.
 
