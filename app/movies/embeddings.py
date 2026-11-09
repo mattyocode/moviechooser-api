@@ -1,8 +1,14 @@
-"""Plot embeddings with fastembed, loaded lazily so web workers never pay for it."""
+"""Plot and query embeddings with fastembed.
 
+The model loads lazily: management commands and tests load it on first use, and
+gunicorn workers load it at boot (config/gunicorn.py) so text search is warm.
+"""
+
+import functools
 import hashlib
 import os
 import re
+import threading
 
 import numpy as np
 
@@ -13,10 +19,11 @@ CHUNK_WORDS = 200
 SENTENCE_END = re.compile(r"(?<=[.!?])\s+")
 
 _model = None
+_model_lock = threading.Lock()
 
 
 def _load_model():
-    # Imported here: fastembed pulls in onnxruntime, which web requests don't need.
+    # Imported here: fastembed pulls in onnxruntime, which most web requests don't need.
     from fastembed import TextEmbedding
 
     return TextEmbedding(
@@ -27,7 +34,10 @@ def _load_model():
 def get_model():
     global _model
     if _model is None:
-        _model = _load_model()
+        # A worker's threads can race to the first load; only one should load.
+        with _model_lock:
+            if _model is None:
+                _model = _load_model()
     return _model
 
 
@@ -97,3 +107,26 @@ def embed_documents(texts: list[str], batch_size: int = 16) -> list[np.ndarray]:
         pooled.append(pool(vectors[start : start + len(chunks)]))
         start += len(chunks)
     return pooled
+
+
+def embed_query(text: str) -> np.ndarray:
+    """Embed a search query, cached on its normalised text.
+
+    Lowercases and collapses whitespace so "I'm  hungry" and "i'm hungry" share
+    an entry. The cached array is read-only, since callers share it.
+    """
+    return _embed_normalised_query(" ".join(text.lower().split()))
+
+
+@functools.lru_cache(maxsize=512)
+def _embed_normalised_query(text: str) -> np.ndarray:
+    # query_embed adds bge's retrieval instruction, suited to short queries
+    # matched against longer passages.
+    vector = next(iter(get_model().query_embed([text])))
+    vector = np.asarray(vector, dtype=np.float32)
+    vector.setflags(write=False)
+    return vector
+
+
+def clear_query_cache():
+    _embed_normalised_query.cache_clear()

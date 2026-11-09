@@ -1,5 +1,7 @@
 import subprocess
 import sys
+import threading
+import time
 
 import numpy as np
 import pytest
@@ -121,3 +123,55 @@ def test_premise_text_with_missing_parts(genres, plot, expected):
     movie = MovieWithGenreFactory(genre=genres, plot=plot)
 
     assert embeddings.premise_text(movie) == expected
+
+
+def test_embed_query_returns_unit_vector():
+    vector = embeddings.embed_query("a getaway driver")
+
+    assert vector.shape == (embeddings.DIMENSIONS,)
+    assert np.isclose(np.linalg.norm(vector), 1.0)
+
+
+def test_embed_query_normalises_text_and_caches():
+    first = embeddings.embed_query(" I'm  HUNGRY ")
+    second = embeddings.embed_query("i'm hungry")
+
+    assert first is second
+    assert embeddings.get_model().query_calls == ["i'm hungry"]
+
+
+def test_embed_query_uses_query_embed_not_embed():
+    embeddings.embed_query("heist")
+
+    assert embeddings.get_model().query_calls == ["heist"]
+
+
+def test_embed_query_vectors_are_read_only():
+    vector = embeddings.embed_query("heist")
+
+    with pytest.raises(ValueError):
+        vector[0] = 1.0
+
+
+def test_concurrent_first_calls_load_the_model_once(monkeypatch):
+    loads = []
+    start = threading.Barrier(4)
+
+    def slow_load():
+        loads.append(1)
+        time.sleep(0.05)
+        return object()
+
+    monkeypatch.setattr(embeddings, "_load_model", slow_load)
+
+    def first_call():
+        start.wait()
+        embeddings.get_model()
+
+    threads = [threading.Thread(target=first_call) for _ in range(4)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+
+    assert loads == [1]
