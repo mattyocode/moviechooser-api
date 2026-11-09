@@ -54,7 +54,7 @@ docker compose -f docker-compose.prod.yml exec djangogunicorn python manage.py b
 
 Web workers embed queries with the same bge-small model (`query_embed`, which adds bge's search instruction), caching recent query vectors per worker. In prod, `config/gunicorn.py` loads the model when each worker boots, so the first search doesn't wait for it. Each worker holds its own copy, which is why prod runs 2 workers with 8 threads. If the model can't load, text queries return 503 (`Search is unavailable right now.`) and everything else keeps working.
 
-Wikipedia text is licensed CC BY-SA. It is used only for search and is never returned by the API. Anything that shows plot text must attribute it with the stored `source_url` and `source_revid`, and link the licence.
+Wikipedia text is licensed CC BY-SA. It is used only for search and is never returned by the API. Anything that shows plot text must attribute it with the stored `source_url` and `source_revid`, and link the licence. Because search and similar movies are computed from that text, every movie response carries `plot_source_url`: a permalink to the stored Wikipedia revision (`<source_url>?oldid=<source_revid>`), or `null` for OMDb plots. The app links these from "About these recommendations".
 
 ## Requirements
 

@@ -55,6 +55,7 @@ class MovieSerializer(serializers.ModelSerializer):
     on_list = serializers.BooleanField(read_only=True)
 
     avg_rating = serializers.SerializerMethodField(read_only=True)
+    plot_source_url = serializers.SerializerMethodField(read_only=True)
 
     def get_avg_rating(self, movie):
         # The movie views annotate it; lists nest plain movies, so fall back.
@@ -62,6 +63,18 @@ class MovieSerializer(serializers.ModelSerializer):
             return movie.avg_rating
         if hasattr(movie, "reviews"):
             return movie.reviews.aggregate(avg_score=Avg("score"))["avg_score"]
+
+    def get_plot_source_url(self, movie):
+        """Permalink to the Wikipedia revision whose plot was embedded.
+
+        For CC BY-SA attribution. None for OMDb plots and for movies the views
+        didn't annotate (lists nest plain movies).
+        """
+        url = getattr(movie, "plot_source_url", None)
+        if not url:
+            return None
+        revid = getattr(movie, "plot_source_revid", None)
+        return f"{url}?oldid={revid}" if revid else url
 
     class Meta:
         model = Movie
@@ -81,6 +94,7 @@ class MovieSerializer(serializers.ModelSerializer):
             "reviews",
             "avg_rating",
             "on_list",
+            "plot_source_url",
         )
         read_only_fields = ("__all__",)
 
