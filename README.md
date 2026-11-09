@@ -48,6 +48,12 @@ docker compose -f docker-compose.prod.yml exec djangogunicorn python manage.py b
 
 `GET /api/movies/<slug>/similar/?limit=6` returns a plain array of the movies nearest to the given one, each with the usual movie fields plus `similarity`. It ranks by `0.5 × plot similarity + 0.5 × premise similarity` (1 − cosine distance for each vector), highest first, and applies the same quality bar as the movie list (average review ≥ 40, a poster). `limit` is clamped to 1–12, and anything that isn't an integer means 6. An unknown slug is a 404. A movie missing either vector, or with a vector from a different embedding model, gets `[]` and is left out of other movies' results; so does every movie until both `build_plot_embeddings` passes have run. Vectors embedded from text that has since changed are still used until the next `build_plot_embeddings` run.
 
+### Text search
+
+`GET /api/movies/?q=<text>` ranks the movie list by how close each movie is to a free-text description, using the same `0.5 × plot + 0.5 × premise` score as similar movies, with the query vector compared against both. The query is trimmed and cut to 120 characters, and a blank `q` behaves exactly like no `q`. Every other filter (`g`, `dmin`, `dmax`, `rmin`, `rmax`) and the quality bar still apply. The response is the usual paginated object, but it holds at most the top 30 in one page (`next` is null, `page=2` is a 404), and each item has a `similarity`. Movies missing either current-model vector are left out of text results.
+
+Web workers embed queries with the same bge-small model (`query_embed`, which adds bge's search instruction), caching recent query vectors per worker. In prod, `config/gunicorn.py` loads the model when each worker boots, so the first search doesn't wait for it. Each worker holds its own copy, which is why prod runs 2 workers with 8 threads. If the model can't load, text queries return 503 (`Search is unavailable right now.`) and everything else keeps working.
+
 Wikipedia text is licensed CC BY-SA. It is used only for search and is never returned by the API. Anything that shows plot text must attribute it with the stored `source_url` and `source_revid`, and link the licence.
 
 ## Requirements
