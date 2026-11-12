@@ -2,6 +2,7 @@ env
 .dockerignore
 Dockerfile
 Dockerfile.prod
-.env.dev
-.env.local
+**/.env*
+!**/.env.example
+!**/.env.db.example
 .plot_cache
