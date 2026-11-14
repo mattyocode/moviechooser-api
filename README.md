@@ -30,7 +30,7 @@ Each movie has a `MoviePlot` row holding long-form plot text and two 384-dimensi
   - the plot vector, from `MoviePlot.text`;
   - the premise vector, from the movie's genres (sorted) plus OMDb's short plot (`Movie.plot`), e.g. `Action, Crime, Drama. A young getaway driver …`. Averaging a long plot blurs a specific premise, which is why the second vector exists. The title is deliberately left out, because title words match unrelated movies (*Baby Driver* → *Babyteeth*). Search is meant to combine the two vectors at query time.
 
-  Each vector records its own model name, so a run that is interrupted or cut short by `--limit` is finished by the next one. It ends with `plot: embedded N, skipped S, left L, empty B | premise: embedded P, skipped Q, left R, empty E, cleared C | total T`. `skipped` rows are already up to date, and `left` counts stale rows that `--limit` cut off, which the next run will do. For the plot, `empty` counts rows with no plot text, which are skipped so they can't stop the rest of the pass. For the premise, `empty` counts movies with neither genres nor a plot, which get no premise vector, and `cleared` counts old premise vectors removed from those movies in this run.
+  Each vector records its own model name, so a run that is interrupted or cut short by `--limit` is finished by the next one. It ends with `plot: embedded N, skipped S, left L, empty B, cleared A | premise: embedded P, skipped Q, left R, empty E, cleared C | total T`. `skipped` rows are already up to date, and `left` counts stale rows that `--limit` cut off, which the next run will do. For the plot, `empty` counts rows with no plot text, which are skipped so they can't stop the rest of the pass. For the premise, `empty` counts movies with neither genres nor a plot. Rows that are `empty` get no vector, and `cleared` counts old vectors removed from them in this run, so search never treats a vector from text that is gone as current. `--limit` caps embeds and clears together for each vector, embeds first.
 
 Both take `--limit`, `--imdbid` (repeatable), `--dry-run` and `--force`. `fetch_plots` also takes `--cache-dir`, and `build_plot_embeddings` takes `--batch-size`. Re-run both after adding movies.
 
@@ -43,6 +43,10 @@ docker compose -f docker-compose.dev.yml exec movies python manage.py build_plot
 docker compose -f docker-compose.prod.yml exec djangogunicorn python manage.py fetch_plots
 docker compose -f docker-compose.prod.yml exec djangogunicorn python manage.py build_plot_embeddings
 ```
+
+### Similar movies
+
+`GET /api/movies/<slug>/similar/?limit=6` returns a plain array of the movies nearest to the given one, each with the usual movie fields plus `similarity`. It ranks by `0.5 × plot similarity + 0.5 × premise similarity` (1 − cosine distance for each vector), highest first, and applies the same quality bar as the movie list (average review ≥ 40, a poster). `limit` is clamped to 1–12, and anything that isn't an integer means 6. An unknown slug is a 404. A movie missing either vector, or with a vector from a different embedding model, gets `[]` and is left out of other movies' results; so does every movie until both `build_plot_embeddings` passes have run. Vectors embedded from text that has since changed are still used until the next `build_plot_embeddings` run.
 
 Wikipedia text is licensed CC BY-SA. It is used only for search and is never returned by the API. Anything that shows plot text must attribute it with the stored `source_url` and `source_revid`, and link the licence.
 
