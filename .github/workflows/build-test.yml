@@ -17,16 +17,10 @@ jobs:
   build:
     runs-on: ubuntu-latest
     env:
+      # Build-time placeholder for collectstatic. Real configuration is
+      # passed to the container at run time; none of it goes in the image.
       SECRET_KEY: foosecretkeyforbuildtimeonly
       DEBUG: 0
-      DJANGO_ALLOWED_HOSTS: localhost 127.0.0.1
-      SQL_ENGINE: ${{ secrets.SQL_ENGINE }}
-      SQL_DATABASE: ${{ secrets.SQL_DATABASE }}
-      SQL_USER: ${{ secrets.SQL_USER }}
-      SQL_PASSWORD: ${{ secrets.SQL_PASSWORD}}
-      SQL_HOST: localhost
-      SQL_PORT: 5432
-      DATABASE: postgres
 
     permissions:
       contents: read
@@ -35,19 +29,6 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
-
-      - name: Add variables to .env
-        run: |
-          echo DEBUG=0 >> ./app/.env
-          echo SECRET_KEY=foosecretkeyforbuildtimeonly >> ./app/.env
-          echo DJANGO_ALLOWED_HOSTS=${{ secrets.DJANGO_ALLOWED_HOSTS }} >> ./app/.env
-          echo SQL_ENGINE=${{ secrets.SQL_ENGINE }} >> ./app/.env
-          echo SQL_DATABASE=${{ secrets.SQL_DATABASE }} >> ./app/.env
-          echo SQL_USER=${{ secrets.SQL_USER }} >> ./app/.env
-          echo SQL_PASSWORD=${{ secrets.SQL_PASSWORD}} >> ./app/.env
-          echo SQL_HOST=${{ secrets.SQL_HOST}} >> ./app/.env
-          echo SQL_PORT=${{ secrets.SQL_PORT}} >> ./app/.env
-          echo DATABASE=${{ secrets.DATABASE}} >> ./app/.env
 
       - name: Set up Docker Buildx
         id: buildx
@@ -151,6 +132,13 @@ jobs:
             -e SQL_ENGINE -e SQL_DATABASE -e SQL_USER -e SQL_PASSWORD \
             -e SQL_HOST -e SQL_PORT -e DATABASE \
             --name latest_image ${{ env.WEB_IMAGE }}:"${{ env.BRANCH_REF}}"
+
+      # Images must not contain env files. Checks the pulled image itself, so
+      # it doesn't depend on the app container booting.
+      - name: Check image has no env files
+        run: |
+          docker run --rm --entrypoint sh ${{ env.WEB_IMAGE }}:"${{ env.BRANCH_REF}}" -c \
+            'found=$(find /app -name ".env*" ! -name ".env.example" ! -name ".env.db.example"); if [ -n "$found" ]; then echo "Env files in image: $found"; exit 1; fi; echo "No env files in image"'
 
       - name: Run tests
         run: |
