@@ -5,7 +5,7 @@ movie and each request picks its country out of it. Caching the raw data, not
 the mapped output, means a mapping fix applies without flushing the cache.
 """
 
-from django.core.cache import cache as default_cache
+from django.core.cache import caches
 
 from . import tmdb
 
@@ -28,6 +28,15 @@ KINDS = {
 KIND_ORDER = ["stream", "rent", "buy"]
 
 FAILED = {"_failed": True}
+
+# The settings.CACHES alias for TMDB data: database-backed, so it's shared by
+# every worker and survives restarts.
+CACHE_ALIAS = "tmdb"
+
+
+def tmdb_cache():
+    return caches[CACHE_ALIAS]
+
 
 # Used only when TMDB's regions list can't be fetched and none is cached.
 FALLBACK_REGIONS = [
@@ -98,8 +107,10 @@ def _watch_results(tmdb_id, client, cache):
     return results
 
 
-def watch_options(movie, country, client=None, cache=default_cache):
+def watch_options(movie, country, client=None, cache=None):
     """The watch-endpoint body for a movie and an upper-case country code."""
+    if cache is None:
+        cache = tmdb_cache()
     if movie.tmdb_id is None:
         return {"country": country, "available": False, "link": None, "providers": []}
 
@@ -122,8 +133,10 @@ def watch_options(movie, country, client=None, cache=default_cache):
     }
 
 
-def regions(client=None, cache=default_cache):
+def regions(client=None, cache=None):
     """[{code, name}] for every country TMDB has watch data for, by name."""
+    if cache is None:
+        cache = tmdb_cache()
     cached = cache.get("tmdb:regions")
     if cached is not None:
         return cached

@@ -121,12 +121,11 @@ def test_get_client_with_token(settings):
 
 
 def test_fake_tmdb_fixture_replaces_factory_and_clears_cache(fake_tmdb):
-    from django.core.cache import cache
-
     from movies import tmdb
+    from movies.watch import tmdb_cache
 
     assert tmdb.get_tmdb_client() is fake_tmdb
     fake_tmdb.find["tt1"] = 5
     assert tmdb.get_tmdb_client().find_movie_id("tt1") == 5
     assert fake_tmdb.count("find") == 1
-    assert cache.get("anything") is None
+    assert tmdb_cache().get("anything") is None

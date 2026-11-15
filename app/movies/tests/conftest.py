@@ -2,10 +2,10 @@ import hashlib
 
 import numpy as np
 import pytest
-from django.core.cache import cache
 from pytest_factoryboy import register
 
 from movies import embeddings, tmdb
+from movies.watch import tmdb_cache
 from movies.models import Movie
 
 from .factories import GenreFactory, MovieFactory
@@ -129,9 +129,9 @@ def fake_tmdb(db, monkeypatch):
     """Every get_tmdb_client() call gets this fake, starting from an empty cache."""
     client = FakeTMDBClient()
     monkeypatch.setattr(tmdb, "get_tmdb_client", lambda: client)
-    cache.clear()
+    tmdb_cache().clear()
     yield client
-    cache.clear()
+    tmdb_cache().clear()
 
 
 @pytest.fixture(autouse=True)

@@ -84,7 +84,7 @@ Movie payloads carry `has_tmdb`, and the app shows its Watch button only when it
 
 ### Caching
 
-The default cache is Django's database cache (the `django_cache` table, created by `createcachetable` in both entrypoints). It's shared by every worker and kept across restarts.
+TMDB data goes in the `tmdb` cache, Django's database cache (the `django_cache` table, created by `createcachetable` in both entrypoints). It's shared by every worker and kept across restarts. The default cache, which DRF's throttles use on every request, stays in per-process memory.
 
 - Each movie's full TMDB response, covering every country, is kept for 24 hours, so one call serves all countries.
 - A failed lookup is remembered for 60 seconds, so an outage doesn't send a request to TMDB on every panel open.

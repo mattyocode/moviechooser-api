@@ -1,7 +1,7 @@
 import pytest
-from django.core.cache import cache
 
 from movies import watch
+from movies.watch import tmdb_cache
 from movies.tmdb import get_tmdb_client as real_get_tmdb_client
 
 from .factories import MovieFactory
@@ -40,11 +40,11 @@ class RecordingCache:
         self.timeouts = {}
 
     def get(self, key):
-        return cache.get(key)
+        return tmdb_cache().get(key)
 
     def set(self, key, value, timeout):
         self.timeouts[key] = timeout
-        cache.set(key, value, timeout)
+        tmdb_cache().set(key, value, timeout)
 
 
 def test_kinds_order_and_shape(heat):
@@ -161,7 +161,7 @@ def test_recovers_once_failure_marker_expires(heat, fake_tmdb):
     fake_tmdb.fail = True
     watch.watch_options(heat, "GB")
     fake_tmdb.fail = False
-    cache.delete(watch.watch_cache_key(949))  # what the 60 s expiry does
+    tmdb_cache().delete(watch.watch_cache_key(949))  # what the 60 s expiry does
 
     assert watch.watch_options(heat, "GB")["available"] is True
     assert fake_tmdb.count("watch") == 2
@@ -209,3 +209,13 @@ def test_regions_fall_back_when_tmdb_down_and_do_not_cache(fake_tmdb):
     fake_tmdb.fail = False
     fake_tmdb.region_list = [{"iso_3166_1": "GB", "english_name": "United Kingdom"}]
     assert watch.regions() == [{"code": "GB", "name": "United Kingdom"}]
+
+
+def test_tmdb_data_uses_a_shared_db_cache_not_the_default(settings):
+    # The default cache backs DRF throttling on every request, so it must not
+    # be the database cache (extra queries per request, shared cull limit).
+    assert (
+        settings.CACHES[watch.CACHE_ALIAS]["BACKEND"]
+        == "django.core.cache.backends.db.DatabaseCache"
+    )
+    assert "DatabaseCache" not in settings.CACHES["default"]["BACKEND"]

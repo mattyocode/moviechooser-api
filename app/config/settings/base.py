@@ -85,17 +85,22 @@ WSGI_APPLICATION = "config.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/3.2/ref/settings/#databases
 
-# Postgres-backed cache, shared by every worker and kept across restarts.
-# Holds TMDB watch-provider responses (movies/watch.py). The table comes from
-# `manage.py createcachetable`, which the entrypoints run after migrate.
+# The default cache stays per-process local memory, as before: DRF's throttles
+# read and write it on every request, and they shouldn't add database queries
+# or share a cull limit with TMDB data.
+#
+# "tmdb" is Postgres-backed, shared by every worker and kept across restarts.
+# It holds TMDB watch-provider responses (movies/watch.py). The table comes
+# from `manage.py createcachetable`, which the entrypoints run after migrate.
 # MAX_ENTRIES covers one row per catalogue movie with room to spare; the
 # default (300) would cull most of them.
 CACHES = {
-    "default": {
+    "default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"},
+    "tmdb": {
         "BACKEND": "django.core.cache.backends.db.DatabaseCache",
         "LOCATION": "django_cache",
         "OPTIONS": {"MAX_ENTRIES": 10000},
-    }
+    },
 }
 
 # Password validation
