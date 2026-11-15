@@ -196,7 +196,7 @@ def test_regions_sorted_by_name_and_cached_for_a_week(fake_tmdb):
     assert recording.timeouts == {"tmdb:regions": 7 * 24 * 60 * 60}
 
 
-def test_regions_fall_back_when_tmdb_down_and_do_not_cache(fake_tmdb):
+def test_regions_fall_back_when_tmdb_down_and_remember_failure_for_60s(fake_tmdb):
     fake_tmdb.fail = True
     recording = RecordingCache()
 
@@ -204,11 +204,18 @@ def test_regions_fall_back_when_tmdb_down_and_do_not_cache(fake_tmdb):
     codes = [r["code"] for r in result]
     assert {"GB", "US"} <= set(codes)
     assert [r["name"] for r in result] == sorted(r["name"] for r in result)
-    assert recording.timeouts == {}
+    # Only a short failure marker is stored, never the fallback as the list.
+    assert recording.timeouts == {"tmdb:regions": 60}
+
+    # Within the 60 s, repeat requests get the fallback without calling TMDB.
+    assert watch.regions(cache=recording) == result
+    assert fake_tmdb.count("regions") == 1
 
     fake_tmdb.fail = False
     fake_tmdb.region_list = [{"iso_3166_1": "GB", "english_name": "United Kingdom"}]
+    tmdb_cache().delete("tmdb:regions")  # what the 60 s expiry does
     assert watch.regions() == [{"code": "GB", "name": "United Kingdom"}]
+    assert fake_tmdb.count("regions") == 2
 
 
 def test_tmdb_data_uses_a_shared_db_cache_not_the_default(settings):

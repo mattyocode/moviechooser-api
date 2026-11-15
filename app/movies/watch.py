@@ -12,6 +12,7 @@ from . import tmdb
 WATCH_TTL = 24 * 60 * 60
 FAILURE_TTL = 60
 REGIONS_TTL = 7 * 24 * 60 * 60
+REGIONS_KEY = "tmdb:regions"
 
 LOGO_BASE = "https://image.tmdb.org/t/p/w92"
 WATCH_PAGE = "https://www.themoviedb.org/movie/{tmdb_id}/watch"
@@ -137,15 +138,20 @@ def regions(client=None, cache=None):
     """[{code, name}] for every country TMDB has watch data for, by name."""
     if cache is None:
         cache = tmdb_cache()
-    cached = cache.get("tmdb:regions")
+    fallback = [{"code": code, "name": name} for code, name in FALLBACK_REGIONS]
+    cached = cache.get(REGIONS_KEY)
     if cached is not None:
-        return cached
+        return fallback if cached == FAILED else cached
     try:
         raw = (client or tmdb.get_tmdb_client()).regions()
     except (tmdb.TMDBError, tmdb.TMDBNotConfigured):
         raw = None
     if not raw:
-        return [{"code": code, "name": name} for code, name in FALLBACK_REGIONS]
+        # Remember the failure briefly, like watch lookups, so an outage
+        # doesn't cost a TMDB call (and a blocked worker) per panel open. The
+        # fallback itself is never cached as the regions list.
+        cache.set(REGIONS_KEY, FAILED, FAILURE_TTL)
+        return fallback
 
     result = sorted(
         (
@@ -155,5 +161,5 @@ def regions(client=None, cache=None):
         ),
         key=lambda r: r["name"],
     )
-    cache.set("tmdb:regions", result, REGIONS_TTL)
+    cache.set(REGIONS_KEY, result, REGIONS_TTL)
     return result

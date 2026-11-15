@@ -88,7 +88,7 @@ TMDB data goes in the `tmdb` cache, Django's database cache (the `django_cache` 
 
 - Each movie's full TMDB response, covering every country, is kept for 24 hours, so one call serves all countries.
 - A failed lookup is remembered for 60 seconds, so an outage doesn't send a request to TMDB on every panel open.
-- The regions list is kept for 7 days.
+- The regions list is kept for 7 days. If TMDB can't supply it, the built-in list is served and the failure is remembered for 60 seconds.
 
 ## Background jobs
 
