@@ -1,5 +1,6 @@
 import logging
 import random
+import re
 
 from django.db.models import Count, Q
 from django.http import Http404
@@ -11,7 +12,7 @@ from rest_framework.generics import ListAPIView
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from movies import embeddings
+from movies import embeddings, watch
 from movies.utils import annotated_movies, recommendable_movies
 
 from .filters import MovieFilter
@@ -67,6 +68,33 @@ class MovieList(ListAPIView):
             .order_by("-similarity", "slug")
             .distinct()[:TEXT_SEARCH_LIMIT]
         )
+
+
+COUNTRY_RE = re.compile(r"[A-Za-z]{2}")
+DEFAULT_COUNTRY = "GB"
+
+
+class MovieWatch(APIView):
+    """Where a movie can be streamed, rented or bought in one country."""
+
+    def get(self, request, slug, format=None):
+        movie = get_object_or_404(Movie.objects.only("imdbid", "tmdb_id"), slug=slug)
+        country = (request.query_params.get("country") or "").strip()
+        if not country:
+            country = DEFAULT_COUNTRY
+        elif not COUNTRY_RE.fullmatch(country):
+            return Response(
+                {"error": "country must be a two-letter ISO 3166-1 code."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        return Response(watch.watch_options(movie, country.upper()))
+
+
+class WatchRegions(APIView):
+    """The countries TMDB has watch-provider data for."""
+
+    def get(self, request, format=None):
+        return Response(watch.regions())
 
 
 class MovieDetail(APIView):
@@ -158,7 +186,7 @@ class SimilarMovies(APIView):
                 )
             )
             .order_by("-similarity", "slug")
-            .prefetch_related("actors", "director", "genre", "ondemand", "reviews")
+            .prefetch_related("actors", "director", "genre", "reviews")
         )
         limit = clamp_limit(request.query_params.get("limit"))
 

@@ -8,7 +8,6 @@ from movies.models import (
     Genre,
     Movie,
     MoviePlot,
-    OnDemand,
     PlotSource,
     Review,
 )
@@ -73,30 +72,6 @@ def test_genre_model():
 
     assert genre.name == "Comedy"
     assert str(genre) == genre.name
-
-
-@pytest.mark.django_db
-def test_ondemand_model(add_movie):
-    movie = Movie(
-        imdbid="test1234",
-        title="Tester: Revenge of the Test",
-        rated="PG",
-        released="2021-01-14",
-    )
-    movie.save()
-    ondemand = OnDemand(
-        movie=movie,
-        service="Google Play",
-        url="googleplay.com/",
-    )
-    ondemand.save()
-
-    assert ondemand.movie.imdbid == "test1234"
-    assert ondemand.service == "Google Play"
-    assert ondemand.url == "googleplay.com/"
-    assert ondemand.added
-    assert ondemand.updated
-    assert str(ondemand) == ondemand.movie.imdbid + "--" + ondemand.service
 
 
 @pytest.mark.django_db

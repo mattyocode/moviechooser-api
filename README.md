@@ -56,6 +56,40 @@ Web workers embed queries with the same bge-small model (`query_embed`, which ad
 
 Wikipedia text is licensed CC BY-SA. It is used only for search and is never returned by the API. Anything that shows plot text must attribute it with the stored `source_url` and `source_revid`, and link the licence. Because search and similar movies are computed from that text, every movie response carries `plot_source_url`: a permalink to the stored Wikipedia revision (`<source_url>?oldid=<source_revid>`), or `null` for OMDb plots. The app links these from "About these recommendations".
 
+## Where to watch (TMDB)
+
+Watch-provider data comes from TMDB, which sources it from JustWatch. It needs `TMDB_READ_TOKEN`, a TMDB v4 read-access token (TMDB account settings, then API), which is sent as a Bearer header.
+
+### Mapping movies to TMDB
+
+`map_tmdb_ids` looks up every movie with no `tmdb_id` using TMDB's `/find` (`external_source=imdb_id`) and stores the first **movie** result. TV-only matches and misses are logged as unmatched and retried on the next run. A movie that already has an ID is never looked up or changed, so a re-run after a full success makes no requests. One failed lookup is logged and skipped. The command ends with `mapped=N unmatched=U failed=F`, and refuses to run without a token. It takes `--limit N` and `--sleep SECONDS` (default 0.05 between requests).
+
+```bash
+# dev / your laptop
+docker compose -f docker-compose.dev.yml exec movies python manage.py map_tmdb_ids --limit 20
+docker compose -f docker-compose.dev.yml exec movies python manage.py map_tmdb_ids
+```
+
+On the server it runs daily at 04:00 UTC as the `map-tmdb-ids` beat job (see [Background jobs](#background-jobs)). After the first deploy, run it once by hand to backfill the catalogue.
+
+### Endpoints
+
+- `GET /api/movies/<slug>/watch/?country=XX` returns `{country, available, link, providers}`. Each provider is `{provider_id, name, kind, logo}`, where `kind` is `stream` (subscription, free or ad-supported), `rent` or `buy`. Providers are ordered stream, then rent, then buy, each by TMDB's display priority.
+  - `link` is TMDB's watch page for that country. If TMDB has no data for the country, it's the movie's watch page with no country.
+  - `country` is any two-letter code, upper-cased, and defaults to `GB`. Anything else is a 400.
+  - If TMDB can't be reached, or the movie has no `tmdb_id`, the response is still a 200, with `available: false` and no providers.
+- `GET /api/watch/regions/` returns `[{code, name}]` for the countries TMDB covers, sorted by name. If TMDB is down it falls back to a short built-in list.
+
+Movie payloads carry `has_tmdb`, and the app shows its Watch button only when it's true, so browsing never calls TMDB.
+
+### Caching
+
+The default cache is Django's database cache (the `django_cache` table, created by `createcachetable` in both entrypoints). It's shared by every worker and kept across restarts.
+
+- Each movie's full TMDB response, covering every country, is kept for 24 hours, so one call serves all countries.
+- A failed lookup is remembered for 60 seconds, so an outage doesn't send a request to TMDB on every panel open.
+- The regions list is kept for 7 days.
+
 ## Background jobs
 
 Celery runs background and scheduled work. Every compose file (dev, staging, prod) runs three extra services next to the API:

@@ -2,7 +2,7 @@
 from django.db.models import Avg
 from rest_framework import serializers
 
-from .models import Actor, Director, Genre, Movie, OnDemand, Review
+from .models import Actor, Director, Genre, Movie, Review
 
 
 class ActorSerializer(serializers.ModelSerializer):
@@ -33,12 +33,6 @@ class GenreSerializer(serializers.ModelSerializer):
         fields = ["id", "name"]
 
 
-class OnDemandSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = OnDemand
-        fields = ["id", "service", "url"]
-
-
 class ReviewSerializer(serializers.ModelSerializer):
     class Meta:
         model = Review
@@ -49,13 +43,18 @@ class MovieSerializer(serializers.ModelSerializer):
     actors = ActorSerializer(many=True, read_only=True)
     director = DirectorSerializer(many=True, read_only=True)
     genre = GenreSerializer(many=True, read_only=True)
-    ondemand = OnDemandSerializer(many=True, read_only=True)
     reviews = ReviewSerializer(many=True, read_only=True)
     # avg_rating = serializers.FloatField(read_only=True)
     on_list = serializers.BooleanField(read_only=True)
 
     avg_rating = serializers.SerializerMethodField(read_only=True)
     plot_source_url = serializers.SerializerMethodField(read_only=True)
+    # Whether the watch endpoint has anything to look up. The column is on the
+    # row, so this adds no query; clients show the Watch button only when true.
+    has_tmdb = serializers.SerializerMethodField(read_only=True)
+
+    def get_has_tmdb(self, movie):
+        return getattr(movie, "tmdb_id", None) is not None
 
     def get_avg_rating(self, movie):
         # The movie views annotate it; lists nest plain movies, so fall back.
@@ -90,11 +89,11 @@ class MovieSerializer(serializers.ModelSerializer):
             "actors",
             "director",
             "genre",
-            "ondemand",
             "reviews",
             "avg_rating",
             "on_list",
             "plot_source_url",
+            "has_tmdb",
         )
         read_only_fields = ("__all__",)
 

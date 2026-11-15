@@ -6,6 +6,8 @@ import os
 from datetime import timedelta
 from pathlib import Path
 
+from celery.schedules import crontab
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 CONFIG_BASE_DIR = Path(__file__).resolve().parent.parent
 APP_BASE_DIR = Path(__file__).resolve().parent.parent.parent
@@ -83,6 +85,18 @@ WSGI_APPLICATION = "config.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/3.2/ref/settings/#databases
 
+# Postgres-backed cache, shared by every worker and kept across restarts.
+# Holds TMDB watch-provider responses (movies/watch.py). The table comes from
+# `manage.py createcachetable`, which the entrypoints run after migrate.
+# MAX_ENTRIES covers one row per catalogue movie with room to spare; the
+# default (300) would cull most of them.
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.db.DatabaseCache",
+        "LOCATION": "django_cache",
+        "OPTIONS": {"MAX_ENTRIES": 10000},
+    }
+}
 
 # Password validation
 # https://docs.djangoproject.com/en/3.2/ref/settings/#auth-password-validators
@@ -185,6 +199,11 @@ EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER")
 EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD")
 DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL")
 
+# TMDB v4 read-access token (TMDB settings > API), sent as a Bearer header.
+# Watch-provider lookups and map_tmdb_ids need it; without it the watch
+# endpoint reports available: false and map_tmdb_ids refuses to run.
+TMDB_READ_TOKEN = os.environ.get("TMDB_READ_TOKEN")
+
 
 CELERY_BROKER_URL = os.environ.get("CELERY_BROKER_URL", "redis://redis:6379/0")
 CELERY_RESULT_BACKEND = os.environ.get("CELERY_RESULT_BACKEND", "redis://redis:6379/0")
@@ -196,7 +215,12 @@ CELERY_IMPORTS = ("movies.tasks",)
 # Every scheduled job, keyed by name. Each entry needs "task" (a registered
 # task name) and "schedule" (seconds or a celery.schedules.crontab, in UTC).
 # movies/tests/test_celery_schedule.py fails on entries naming unknown tasks.
-CELERY_BEAT_SCHEDULE = {}
+CELERY_BEAT_SCHEDULE = {
+    "map-tmdb-ids": {
+        "task": "movies.tasks.map_tmdb_ids",
+        "schedule": crontab(hour=4, minute=0),
+    },
+}
 
 if not DEBUG:
     LOGGING = {

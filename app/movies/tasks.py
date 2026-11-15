@@ -2,6 +2,7 @@ import logging
 import random
 import time
 
+from django.core.management import call_command
 from django.db import transaction
 
 from config.celery import app
@@ -74,3 +75,9 @@ def add_movies_from_url_to_db(url: str):
     current_ids = set(Movie.objects.all().values_list("imdbid", flat=True))
     movies_to_add = new_movie_ids - current_ids
     add_movies_to_db(list(movies_to_add))
+
+
+@app.task()
+def map_tmdb_ids():
+    """Daily: link newly added movies to TMDB IDs (see map_tmdb_ids)."""
+    call_command("map_tmdb_ids")
