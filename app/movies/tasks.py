@@ -2,11 +2,11 @@ import logging
 import random
 import time
 
-from django.core.management import call_command
 from django.db import transaction
 
 from config.celery import app
 
+from . import tmdb_mapping
 from .models import Actor, Director, Genre, Movie, Review
 from .utils import OMDBFetch, get_imdbids_from_webpage
 
@@ -79,5 +79,11 @@ def add_movies_from_url_to_db(url: str):
 
 @app.task()
 def map_tmdb_ids():
-    """Daily: link newly added movies to TMDB IDs (see map_tmdb_ids)."""
-    call_command("map_tmdb_ids")
+    """Daily: link newly added movies to TMDB IDs.
+
+    Returns the counts, so they show in the result backend and worker log.
+    A missing token raises TMDBNotConfigured, failing the task visibly.
+    """
+    result = tmdb_mapping.map_tmdb_ids()
+    logger.info("map_tmdb_ids: %s", result)
+    return result.as_dict()
