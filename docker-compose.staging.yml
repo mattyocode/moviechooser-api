@@ -30,6 +30,43 @@ services:
       timeout: 3s
       retries: 3
 
+  # Broker only: queued messages are short-lived and beat re-queues on
+  # schedule, so nothing is persisted.
+  redis:
+    image: redis:7-alpine
+    command: redis-server --save "" --appendonly no
+    restart: always
+
+  # The Celery services override the entrypoint so they never run migrate or
+  # start gunicorn (entrypoint.prod.sh does both). One task at a time keeps
+  # memory bounded: each prefork child is a full Django process.
+  celery-worker:
+    build:
+      context: ./app
+      dockerfile: Dockerfile.inst.prod
+    entrypoint: ["celery", "-A", "config", "worker", "-l", "info", "--concurrency=1"]
+    restart: always
+    env_file:
+      - ./app/.env.staging
+    depends_on:
+      mc-staging-db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  # Exactly one beat process: a second would queue every scheduled job twice.
+  celery-beat:
+    build:
+      context: ./app
+      dockerfile: Dockerfile.inst.prod
+    entrypoint: ["celery", "-A", "config", "beat", "-l", "info", "--schedule", "/tmp/celerybeat-schedule"]
+    restart: always
+    env_file:
+      - ./app/.env.staging
+    depends_on:
+      redis:
+        condition: service_started
+
   nginx-proxy:
     container_name: nginx-proxy
     build: ./nginx

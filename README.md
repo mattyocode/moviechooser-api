@@ -56,6 +56,32 @@ Web workers embed queries with the same bge-small model (`query_embed`, which ad
 
 Wikipedia text is licensed CC BY-SA. It is used only for search and is never returned by the API. Anything that shows plot text must attribute it with the stored `source_url` and `source_revid`, and link the licence. Because search and similar movies are computed from that text, every movie response carries `plot_source_url`: a permalink to the stored Wikipedia revision (`<source_url>?oldid=<source_revid>`), or `null` for OMDb plots. The app links these from "About these recommendations".
 
+## Background jobs
+
+Celery runs background and scheduled work. Every compose file (dev, staging, prod) runs three extra services next to the API:
+
+- `redis`: the broker. In prod and staging nothing is persisted, because queued messages are short-lived and beat re-queues on schedule.
+- the worker (`celery` in dev, `celery-worker` in staging and prod): runs tasks. In staging and prod it runs one task at a time (`--concurrency=1`), because each worker child is a full Django process.
+- `celery-beat`: queues scheduled jobs. **Run exactly one.** A second beat queues every job twice.
+
+In staging and prod, the worker and beat override the image's entrypoint, so they never run `migrate` or start gunicorn. Only the API container does either.
+
+Scheduled jobs are declared in one place: `CELERY_BEAT_SCHEDULE` in `config/settings/base.py`. Times are in UTC. `movies/tests/test_celery_schedule.py` fails if an entry names a task that isn't registered. The broker defaults to `redis://redis:6379/0`. Set `CELERY_BROKER_URL` / `CELERY_RESULT_BACKEND` to point elsewhere.
+
+```bash
+# logs
+docker compose -f docker-compose.dev.yml logs -f celery celery-beat
+
+# is the worker up, and which tasks does it know?
+docker compose -f docker-compose.dev.yml exec celery celery -A config inspect ping
+docker compose -f docker-compose.dev.yml exec celery celery -A config inspect registered
+
+# run a task by hand (or run its management command directly instead)
+docker compose -f docker-compose.dev.yml exec celery celery -A config call movies.tasks.add_movies_to_db --args='[[]]'
+```
+
+In staging and prod, use the matching compose file and `celery-worker` in place of `celery`.
+
 ## Requirements
 
 - python = "3.12"

@@ -44,30 +44,34 @@ services:
       retries: 3
 
   redis:
-    image: redis:latest
+    image: redis:7-alpine
     container_name: redis
 
   celery:
     build: ./app
-    command: >
-      celery -A config worker -l info
+    command: celery -A config worker -l info
     volumes:
       - ./app/:/app/
     env_file:
       - ./app/.env.dev
     depends_on:
-      - redis
-      - nginx
+      mc-dev-db:
+        condition: service_healthy
+      redis:
+        condition: service_started
 
-  # celery-beat:
-  #   build: ./app
-  #   command: celery -A app beat -l info
-  #   volumes:
-  #     - ./app/:/app/
-  #   env_file:
-  #     - ./app/.env.dev
-  #   depends_on:
-  #     - celery
+  # Exactly one beat process: a second would queue every scheduled job twice.
+  # The schedule file lives in /tmp so it stays out of the ./app bind mount.
+  celery-beat:
+    build: ./app
+    command: celery -A config beat -l info --schedule /tmp/celerybeat-schedule
+    volumes:
+      - ./app/:/app/
+    env_file:
+      - ./app/.env.dev
+    depends_on:
+      redis:
+        condition: service_started
 
 
 volumes:
