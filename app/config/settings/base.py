@@ -186,13 +186,17 @@ EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD")
 DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL")
 
 
-CELERY_RESULT_BACKEND = "redis"
-CELERY_BROKER_URL = "redis://redis:6379"
-CELERY_RESULT_BACKEND = "redis://redis:6379"
+CELERY_BROKER_URL = os.environ.get("CELERY_BROKER_URL", "redis://redis:6379/0")
+CELERY_RESULT_BACKEND = os.environ.get("CELERY_RESULT_BACKEND", "redis://redis:6379/0")
 CELERY_TIMEZONE = "UTC"
 CELERY_TASK_TRACK_STARTED = True
 CELERY_TASK_TIME_LIMIT = 30 * 60
 CELERY_IMPORTS = ("movies.tasks",)
+
+# Every scheduled job, keyed by name. Each entry needs "task" (a registered
+# task name) and "schedule" (seconds or a celery.schedules.crontab, in UTC).
+# movies/tests/test_celery_schedule.py fails on entries naming unknown tasks.
+CELERY_BEAT_SCHEDULE = {}
 
 if not DEBUG:
     LOGGING = {
