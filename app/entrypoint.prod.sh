@@ -27,6 +27,8 @@ mkdir /logs
 # done
 
 python manage.py migrate
+# The database cache backend's table (not created by migrate; idempotent).
+python manage.py createcachetable
 gunicorn -c config/gunicorn.py config.wsgi:application --bind 0.0.0.0:8000 --forwarded-allow-ips="18.168.29.188,172.26.14.23" \
 --workers 2 --threads 8 --capture-output --access-logfile /logs/gunicorn-access.log --timeout 300
 

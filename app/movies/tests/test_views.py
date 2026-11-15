@@ -8,7 +8,7 @@ from django.test.utils import CaptureQueriesContext
 
 from accounts.models import CustomUser
 from lists.models import Item, List
-from movies.models import Actor, Director, OnDemand
+from movies.models import Actor, Director, Movie
 
 from .factories import MovieFactory, MovieWithGenreFactory
 
@@ -110,13 +110,34 @@ def test_get_single_movie_with_director(client, add_movie):
 
 
 @pytest.mark.django_db
-def test_get_single_movie_with_ondemand(client, add_movie):
-    movie = MovieWithGenreFactory(title="Tester", genre=["Comedy"])
-    OnDemand.objects.create(movie=movie, service="Google Play", url="googleplay.com/")
-    resp = client.get(f"/api/movies/{movie.slug}/")
-    assert resp.status_code == 200
-    assert resp.data["title"] == "Tester"
-    assert "Google Play" in json.dumps(resp.data)
+@pytest.mark.parametrize("tmdb_id, expected", [(949, True), (None, False)])
+def test_movie_payloads_carry_has_tmdb_and_no_ondemand(client, tmdb_id, expected):
+    movie = MovieWithGenreFactory(
+        title="Tester", genre=["Comedy"], review=[80], tmdb_id=tmdb_id
+    )
+    detail = client.get(f"/api/movies/{movie.slug}/").data
+    listed = client.get("/api/movies/").data["results"][0]
+    random_movie = client.get("/api/movies/random/").data
+    for payload in (detail, listed, random_movie):
+        assert payload["has_tmdb"] is expected
+        assert "ondemand" not in payload
+
+
+@pytest.mark.django_db
+def test_has_tmdb_adds_no_queries_to_the_movie_list(client):
+    def list_queries():
+        with CaptureQueriesContext(connection) as queries:
+            resp = client.get("/api/movies/")
+        assert resp.status_code == 200
+        return [q["sql"] for q in queries.captured_queries]
+
+    MovieFactory.create_batch(3, review=[80], tmdb_id=None)
+    unmapped = list_queries()
+    Movie.objects.update(tmdb_id=949)
+    mapped = list_queries()
+
+    assert len(mapped) == len(unmapped)
+    assert not any("ondemand" in sql for sql in mapped)
 
 
 @pytest.mark.django_db

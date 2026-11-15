@@ -6,6 +6,7 @@ from django.db import transaction
 
 from config.celery import app
 
+from . import tmdb_mapping
 from .models import Actor, Director, Genre, Movie, Review
 from .utils import OMDBFetch, get_imdbids_from_webpage
 
@@ -74,3 +75,15 @@ def add_movies_from_url_to_db(url: str):
     current_ids = set(Movie.objects.all().values_list("imdbid", flat=True))
     movies_to_add = new_movie_ids - current_ids
     add_movies_to_db(list(movies_to_add))
+
+
+@app.task()
+def map_tmdb_ids():
+    """Daily: link newly added movies to TMDB IDs.
+
+    Returns the counts, so they show in the result backend and worker log.
+    A missing token raises TMDBNotConfigured, failing the task visibly.
+    """
+    result = tmdb_mapping.map_tmdb_ids()
+    logger.info("map_tmdb_ids: %s", result)
+    return result.as_dict()

@@ -4,7 +4,8 @@ import numpy as np
 import pytest
 from pytest_factoryboy import register
 
-from movies import embeddings
+from movies import embeddings, tmdb
+from movies.watch import tmdb_cache
 from movies.models import Movie
 
 from .factories import GenreFactory, MovieFactory
@@ -83,6 +84,54 @@ class FakeEmbeddingModel:
     def query_embed(self, texts):
         self.query_calls.extend(texts)
         yield from self.embed(texts)
+
+
+class FakeTMDBClient:
+    """Stand-in for movies.tmdb.TMDBClient with canned data and call counts.
+
+    find: {imdbid: tmdb_id or None}; watch: {tmdb_id: results by country};
+    regions: TMDB's regions list. Set fail to True (every call) or to a set
+    of imdbids/tmdb_ids (just those) to raise TMDBError.
+    """
+
+    def __init__(self):
+        self.find = {}
+        self.watch = {}
+        self.region_list = []
+        self.fail = False
+        self.calls = []
+
+    def _maybe_fail(self, key):
+        if self.fail is True or (self.fail and key in self.fail):
+            raise tmdb.TMDBError(f"fake failure for {key}")
+
+    def find_movie_id(self, imdbid):
+        self.calls.append(("find", imdbid))
+        self._maybe_fail(imdbid)
+        return self.find.get(imdbid)
+
+    def watch_providers(self, tmdb_id):
+        self.calls.append(("watch", tmdb_id))
+        self._maybe_fail(tmdb_id)
+        return self.watch.get(tmdb_id, {})
+
+    def regions(self):
+        self.calls.append(("regions", None))
+        self._maybe_fail("regions")
+        return self.region_list
+
+    def count(self, kind):
+        return sum(1 for call_kind, _ in self.calls if call_kind == kind)
+
+
+@pytest.fixture
+def fake_tmdb(db, monkeypatch):
+    """Every get_tmdb_client() call gets this fake, starting from an empty cache."""
+    client = FakeTMDBClient()
+    monkeypatch.setattr(tmdb, "get_tmdb_client", lambda: client)
+    tmdb_cache().clear()
+    yield client
+    tmdb_cache().clear()
 
 
 @pytest.fixture(autouse=True)

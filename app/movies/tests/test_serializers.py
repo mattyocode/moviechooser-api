@@ -7,7 +7,6 @@ from movies.serializers import (
     DirectorSerializer,
     GenreSerializer,
     MovieSerializer,
-    OnDemandSerializer,
     ReviewSerializer,
 )
 
@@ -32,6 +31,7 @@ def test_valid_movie_serializer():
     valid_serializer_data["released"] = "2021-01-14"
     valid_serializer_data["avg_rating"] = None
     valid_serializer_data["plot_source_url"] = None
+    valid_serializer_data["has_tmdb"] = False
     assert serializer.data == valid_serializer_data
     assert serializer.errors == {}
 
@@ -120,27 +120,6 @@ def test_invalid_director_serializer():
     }
 
 
-def test_valid_ondemand_serializer():
-    valid_serializer_data = {"service": "Google Play", "url": "googleplay.com/"}
-    serializer = OnDemandSerializer(data=valid_serializer_data)
-    assert serializer.is_valid()
-    assert serializer.data == valid_serializer_data
-    assert serializer.validated_data == valid_serializer_data
-    assert serializer.errors == {}
-
-
-def test_invalid_ondemand_serializer():
-    invalid_serializer_data = {}
-    serializer = OnDemandSerializer(data=invalid_serializer_data)
-    assert not serializer.is_valid()
-    assert serializer.validated_data == {}
-    assert serializer.data == invalid_serializer_data
-    assert serializer.errors == {
-        "service": ["This field is required."],
-        "url": ["This field is required."],
-    }
-
-
 def test_valid_review_serializer():
     valid_serializer_data = {"source": "imdb", "score": 65}
     serializer = ReviewSerializer(data=valid_serializer_data)
@@ -181,3 +160,20 @@ def test_invalid_genre_order_serializer():
     assert serializer.errors == {
         "name": ["This field is required."],
     }
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("tmdb_id, expected", [(949, True), (None, False)])
+def test_movie_serializer_has_tmdb(tmdb_id, expected):
+    from .factories import MovieFactory
+
+    data = MovieSerializer(MovieFactory(tmdb_id=tmdb_id)).data
+    assert data["has_tmdb"] is expected
+    assert "ondemand" not in data
+
+
+def test_similar_movie_payloads_carry_has_tmdb():
+    from movies.serializers import SimilarMovieSerializer
+
+    assert "has_tmdb" in SimilarMovieSerializer.Meta.fields
+    assert "ondemand" not in SimilarMovieSerializer.Meta.fields
