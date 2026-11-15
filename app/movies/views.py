@@ -1,9 +1,12 @@
+import logging
 import random
 
 from django.db.models import Count, Q
 from django.http import Http404
 from django.shortcuts import get_object_or_404
 from pgvector.django import CosineDistance
+from rest_framework import status
+from rest_framework.exceptions import APIException
 from rest_framework.generics import ListAPIView
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -19,16 +22,51 @@ from .serializers import (
     SimilarMovieSerializer,
 )
 
+logger = logging.getLogger(__name__)
+
+# Text search returns one page: the slice must fit PAGE_SIZE (pinned by a test).
+TEXT_SEARCH_LIMIT = 30
+TEXT_SEARCH_MAX_CHARS = 120
+
+
+class SearchUnavailable(APIException):
+    status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+    default_detail = "Search is unavailable right now."
+    default_code = "search_unavailable"
+
 
 class MovieList(ListAPIView):
-    serializer_class = MovieSerializer
     filterset_class = MovieFilter
+
+    def text_query(self):
+        """The trimmed ?q=, cut to TEXT_SEARCH_MAX_CHARS; "" when blank."""
+        return self.request.query_params.get("q", "").strip()[:TEXT_SEARCH_MAX_CHARS]
+
+    def get_serializer_class(self):
+        if self.text_query():
+            return SimilarMovieSerializer
+        return MovieSerializer
 
     def get_queryset(self):
         movies_qs = recommendable_movies(self.request.user)
         filterset = self.filterset_class(self.request.GET, queryset=movies_qs)
 
-        return filterset.qs.order_by("-avg_rating").distinct()
+        query = self.text_query()
+        if not query:
+            return filterset.qs.order_by("-avg_rating").distinct()
+
+        try:
+            query_vector = embeddings.embed_query(query)
+        except Exception:
+            logger.exception("Could not embed text search query")
+            raise SearchUnavailable()
+
+        return (
+            filterset.qs.filter(current_vectors("plot_data__"))
+            .annotate(similarity=combined_similarity(query_vector, query_vector))
+            .order_by("-similarity", "slug")
+            .distinct()[:TEXT_SEARCH_LIMIT]
+        )
 
 
 class MovieDetail(APIView):
@@ -69,6 +107,19 @@ def current_vectors(prefix=""):
     )
 
 
+def combined_similarity(plot_vector, premise_vector):
+    """Weighted cosine similarity to a movie's plot and premise vectors.
+
+    Annotates a Movie queryset. /similar/ passes a movie's two vectors; text
+    search passes the query vector for both.
+    """
+    return SIMILARITY_PLOT_WEIGHT * (
+        1 - CosineDistance("plot_data__embedding", plot_vector)
+    ) + (1 - SIMILARITY_PLOT_WEIGHT) * (
+        1 - CosineDistance("plot_data__premise_embedding", premise_vector)
+    )
+
+
 def source_plot(slug):
     """The movie's MoviePlot when both vectors are from the current model.
 
@@ -97,16 +148,15 @@ class SimilarMovies(APIView):
         # the HNSW indexes. On dev with 3,000 movies (2026-11-04) this query
         # takes about 7ms, and the whole view in-process about 13ms; HTTP adds
         # more.
-        similarity = SIMILARITY_PLOT_WEIGHT * (
-            1 - CosineDistance("plot_data__embedding", source.embedding)
-        ) + (1 - SIMILARITY_PLOT_WEIGHT) * (
-            1 - CosineDistance("plot_data__premise_embedding", source.premise_embedding)
-        )
         movies_qs = (
             recommendable_movies(request.user)
             .exclude(pk=source.pk)
             .filter(current_vectors("plot_data__"))
-            .annotate(similarity=similarity)
+            .annotate(
+                similarity=combined_similarity(
+                    source.embedding, source.premise_embedding
+                )
+            )
             .order_by("-similarity", "slug")
             .prefetch_related("actors", "director", "genre", "ondemand", "reviews")
         )

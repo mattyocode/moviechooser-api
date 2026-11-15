@@ -4,12 +4,23 @@ import re
 from datetime import datetime
 
 import requests
-from django.db.models import Avg, Exists, FloatField, OuterRef, Subquery, Value
+from django.db.models import (
+    Avg,
+    Case,
+    Exists,
+    F,
+    FloatField,
+    OuterRef,
+    Q,
+    Subquery,
+    Value,
+    When,
+)
 
 from lists.models import Item
 
 from .constants import ReviewSources
-from .models import Movie, Review
+from .models import Movie, PlotSource, Review
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +30,8 @@ OMDBID_URL = "http://www.omdbapi.com/?i={imdbid}&apikey={API_KEY}"
 
 
 def annotated_movies(user):
-    """Movies with avg_rating and on_list (on one of the user's lists)."""
+    """Movies with avg_rating, on_list (on one of the user's lists) and the
+    Wikipedia source of their plot (plot_source_url/_revid, None otherwise)."""
     # A subquery, not Avg("reviews__score"): that adds a GROUP BY, which makes
     # Postgres evaluate other annotations (like /similar/'s two cosine
     # distances) once per review row instead of once per movie.
@@ -29,8 +41,12 @@ def annotated_movies(user):
         .annotate(avg=Avg("score"))
         .values("avg")
     )
+    # Only Wikipedia plots need attribution (CC BY-SA); OMDb ones don't.
+    wikipedia = Q(plot_data__source=PlotSource.WIKIPEDIA)
     movies_qs = Movie.objects.annotate(
-        avg_rating=Subquery(avg_rating, output_field=FloatField())
+        avg_rating=Subquery(avg_rating, output_field=FloatField()),
+        plot_source_url=Case(When(wikipedia, then=F("plot_data__source_url"))),
+        plot_source_revid=Case(When(wikipedia, then=F("plot_data__source_revid"))),
     )
     if user.is_authenticated:
         item = Item.objects.filter(movie=OuterRef("pk"), _list__owner=user)

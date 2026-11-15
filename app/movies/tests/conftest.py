@@ -71,11 +71,18 @@ def mock_requests_get(mocker):
 class FakeEmbeddingModel:
     """Deterministic stand-in for fastembed: one unit vector per text."""
 
+    def __init__(self):
+        self.query_calls = []
+
     def embed(self, texts, batch_size=16):
         for text in texts:
             seed = int.from_bytes(hashlib.sha256(text.encode()).digest()[:4], "big")
             vector = np.random.default_rng(seed).standard_normal(embeddings.DIMENSIONS)
             yield (vector / np.linalg.norm(vector)).astype(np.float32)
+
+    def query_embed(self, texts):
+        self.query_calls.extend(texts)
+        yield from self.embed(texts)
 
 
 @pytest.fixture(autouse=True)
@@ -83,3 +90,6 @@ def fake_embedding_model(monkeypatch):
     """Tests never download or run the real model."""
     monkeypatch.setattr(embeddings, "_model", None)
     monkeypatch.setattr(embeddings, "_load_model", FakeEmbeddingModel)
+    embeddings.clear_query_cache()
+    yield
+    embeddings.clear_query_cache()

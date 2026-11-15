@@ -31,6 +31,7 @@ def test_valid_movie_serializer():
 
     valid_serializer_data["released"] = "2021-01-14"
     valid_serializer_data["avg_rating"] = None
+    valid_serializer_data["plot_source_url"] = None
     assert serializer.data == valid_serializer_data
     assert serializer.errors == {}
 
