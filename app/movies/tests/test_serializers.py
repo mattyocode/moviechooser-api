@@ -32,6 +32,7 @@ def test_valid_movie_serializer():
     valid_serializer_data["avg_rating"] = None
     valid_serializer_data["plot_source_url"] = None
     valid_serializer_data["has_tmdb"] = False
+    valid_serializer_data["poster_path"] = None
     assert serializer.data == valid_serializer_data
     assert serializer.errors == {}
 

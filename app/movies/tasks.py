@@ -6,7 +6,7 @@ from django.db import transaction
 
 from config.celery import app
 
-from . import tmdb_mapping
+from . import posters, tmdb_mapping
 from .models import Actor, Director, Genre, Movie, Review
 from .utils import OMDBFetch, get_imdbids_from_webpage
 
@@ -86,4 +86,22 @@ def map_tmdb_ids():
     """
     result = tmdb_mapping.map_tmdb_ids()
     logger.info("map_tmdb_ids: %s", result)
+    return result.as_dict()
+
+
+@app.task()
+def check_posters():
+    """Weekly: check every TMDB poster loads, and repair broken and missing
+    paths.
+
+    Returns the counts, so they show in the result backend and worker log.
+    Raises PosterCheckFailed (after logging the summary) when more than 5%
+    are still broken, and TMDBNotConfigured without a token, failing the
+    task visibly either way.
+    """
+    result = posters.check_posters()
+    logger.info("check_posters: %s", result)
+    if result.over_threshold:
+        logger.error("check_posters: more than 5%% still broken: %s", result)
+        raise posters.PosterCheckFailed(str(result))
     return result.as_dict()

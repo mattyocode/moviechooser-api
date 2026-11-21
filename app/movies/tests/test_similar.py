@@ -120,7 +120,15 @@ def test_similar_items_have_movie_fields_and_similarity(
     resp = client.get(similar_url("target"))
 
     item = resp.data[0]
-    for field in ("slug", "title", "poster_url", "genre", "avg_rating", "on_list"):
+    for field in (
+        "slug",
+        "title",
+        "poster_url",
+        "poster_path",
+        "genre",
+        "avg_rating",
+        "on_list",
+    ):
         assert field in item
     assert isinstance(item["similarity"], float)
 
@@ -176,13 +184,15 @@ def test_similar_applies_rating_bar(client, target, movie_with_vectors):
 
 
 @pytest.mark.django_db
-def test_similar_excludes_movies_without_poster(client, target, movie_with_vectors):
-    movie_with_vectors("no-poster", vec(1, 0.1), vec(1, 0.1), poster_url="N/A")
+def test_similar_includes_movies_without_poster(client, target, movie_with_vectors):
+    movie_with_vectors(
+        "no-poster", vec(1, 0.1), vec(1, 0.1), poster_url="N/A", poster_path=None
+    )
     movie_with_vectors("poster", vec(1, 0.2), vec(1, 0.2))
 
     resp = client.get(similar_url("target"))
 
-    assert slugs(resp) == ["poster"]
+    assert slugs(resp) == ["no-poster", "poster"]
 
 
 @pytest.mark.django_db

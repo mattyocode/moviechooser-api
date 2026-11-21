@@ -50,6 +50,10 @@ class Movie(models.Model):
     # Set by `map_tmdb_ids`. Not unique: two IMDb records can resolve to the
     # same TMDB film, and that shouldn't fail the mapping run.
     tmdb_id = models.PositiveIntegerField(null=True, blank=True, db_index=True)
+    # TMDB's image path for the poster, e.g. "/abc123.jpg" (no host or size).
+    # Set by `map_tmdb_ids`, repaired weekly by `check_posters`; null when
+    # TMDB has no poster or the movie isn't looked up yet.
+    poster_path = models.CharField(max_length=100, null=True, blank=True)
 
     def __str__(self):
         return f"{self.title}"

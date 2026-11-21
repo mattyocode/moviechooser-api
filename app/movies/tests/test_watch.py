@@ -1,8 +1,8 @@
 import pytest
 
 from movies import watch
-from movies.watch import tmdb_cache
 from movies.tmdb import get_tmdb_client as real_get_tmdb_client
+from movies.watch import tmdb_cache
 
 from .factories import MovieFactory
 
