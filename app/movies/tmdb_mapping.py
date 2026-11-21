@@ -32,7 +32,8 @@ class MappingResult:
 
 
 def map_tmdb_ids(limit=None, sleep=DEFAULT_SLEEP, client=None):
-    """Look up a TMDB movie ID for every movie that doesn't have one.
+    """Look up a TMDB movie ID, and its poster path, for every movie that
+    doesn't have an ID.
 
     Raises tmdb.TMDBNotConfigured before touching anything when no token is
     set. A failed lookup is logged and counted, and the run carries on.
@@ -45,21 +46,24 @@ def map_tmdb_ids(limit=None, sleep=DEFAULT_SLEEP, client=None):
         movies = movies[: max(limit, 0)]
 
     mapped = unmatched = failed = 0
-    for i, movie in enumerate(movies.only("imdbid", "title", "tmdb_id")):
+    fields = ("imdbid", "title", "tmdb_id", "poster_path")
+    for i, movie in enumerate(movies.only(*fields)):
         if i and sleep:
             time.sleep(sleep)
         try:
-            tmdb_id = client.find_movie_id(movie.imdbid)
+            match = client.find_movie(movie.imdbid)
         except tmdb.TMDBError as e:
             failed += 1
             logger.warning("TMDB lookup failed for %s: %s", movie.imdbid, e)
             continue
-        if tmdb_id is None:
+        if match is None:
             unmatched += 1
             logger.info("No TMDB movie for %s (%s)", movie.imdbid, movie.title)
             continue
-        movie.tmdb_id = tmdb_id
-        movie.save(update_fields=["tmdb_id"])
+        # The same /find result carries the poster path, so it costs nothing.
+        movie.tmdb_id = match.id
+        movie.poster_path = match.poster_path
+        movie.save(update_fields=["tmdb_id", "poster_path"])
         mapped += 1
 
     return MappingResult(mapped=mapped, unmatched=unmatched, failed=failed)

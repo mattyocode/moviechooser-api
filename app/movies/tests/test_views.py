@@ -124,6 +124,40 @@ def test_movie_payloads_carry_has_tmdb_and_no_ondemand(client, tmdb_id, expected
 
 
 @pytest.mark.django_db
+@pytest.mark.parametrize("poster_path", ["/heat.jpg", None])
+def test_movie_payloads_carry_poster_path_and_url(client, poster_path):
+    movie = MovieWithGenreFactory(
+        title="Tester",
+        genre=["Comedy"],
+        review=[80],
+        poster_url="https://m.media-amazon.com/images/heat.jpg",
+        poster_path=poster_path,
+    )
+    detail = client.get(f"/api/movies/{movie.slug}/").data
+    listed = client.get("/api/movies/").data["results"][0]
+    random_movie = client.get("/api/movies/random/").data
+    for payload in (detail, listed, random_movie):
+        assert payload["poster_path"] == poster_path
+        assert payload["poster_url"] == "https://m.media-amazon.com/images/heat.jpg"
+
+
+@pytest.mark.django_db
+def test_poster_path_adds_no_queries_to_the_movie_list(client):
+    def list_queries():
+        with CaptureQueriesContext(connection) as queries:
+            resp = client.get("/api/movies/")
+        assert resp.status_code == 200
+        return queries.captured_queries
+
+    MovieFactory.create_batch(3, review=[80], poster_path=None)
+    without = list_queries()
+    Movie.objects.update(poster_path="/p.jpg")
+    with_paths = list_queries()
+
+    assert len(with_paths) == len(without)
+
+
+@pytest.mark.django_db
 def test_has_tmdb_adds_no_queries_to_the_movie_list(client):
     def list_queries():
         with CaptureQueriesContext(connection) as queries:
@@ -456,17 +490,26 @@ def test_dont_return_movies_with_no_avg_score(client):
 
 
 @pytest.mark.django_db
-def test_dont_return_movies_with_no_poster_url(client):
-    MovieFactory.create(title="No image movie", poster_url="N/A")
+def test_movies_with_no_poster_from_either_source_are_listed(client):
     MovieFactory.create(
-        title="Image movie",
+        title="No image movie", review=[75], poster_url="N/A", poster_path=None
     )
+    MovieFactory.create(title="Image movie", review=[75], poster_path="/p.jpg")
 
     resp = client.get("/api/movies/")
 
     assert resp.status_code == 200
-    assert "Image movie" in json.dumps(resp.data)
-    assert "No image movie" not in json.dumps(resp.data)
+    titles = {movie["title"] for movie in resp.data["results"]}
+    assert titles == {"Image movie", "No image movie"}
+
+
+@pytest.mark.django_db
+def test_movie_with_poster_below_rating_bar_is_not_listed(client):
+    MovieFactory.create(title="Poorly reviewed", review=[39], poster_path="/p.jpg")
+
+    resp = client.get("/api/movies/")
+
+    assert resp.data["results"] == []
 
 
 @pytest.mark.django_db

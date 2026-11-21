@@ -13,6 +13,7 @@ def create_item_with_list_and_movie(user):
     movie = MovieFactory(
         imdbid="test0987",
         title="Tester",
+        poster_path="/tester.jpg",
     )
     _list = List.objects.create(owner=user, name=DEFAULT_LIST)
     item = Item.objects.create(
@@ -31,6 +32,7 @@ def test_get_all_list_items(auth_user_client):
     assert resp.data["results"][0]["_list"]["name"] == DEFAULT_LIST
     assert resp.data["results"][0]["watched"] is False
     assert resp.data["results"][0]["movie"]["title"] == "Tester"
+    assert resp.data["results"][0]["movie"]["poster_path"] == "/tester.jpg"
     assert resp.data["results"][0]["uid"] == str(item.uid)
 
 

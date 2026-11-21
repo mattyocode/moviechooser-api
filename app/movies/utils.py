@@ -55,8 +55,12 @@ def annotated_movies(user):
 
 
 def recommendable_movies(user):
-    """annotated_movies that are well reviewed and have a poster."""
-    return annotated_movies(user).filter(avg_rating__gte=40).exclude(poster_url="N/A")
+    """annotated_movies that are well reviewed.
+
+    A missing poster doesn't exclude a movie: the frontend shows a title
+    placeholder for it.
+    """
+    return annotated_movies(user).filter(avg_rating__gte=40)
 
 
 class OMDBFetch:

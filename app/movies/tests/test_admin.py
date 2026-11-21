@@ -60,3 +60,35 @@ def test_movie_tmdb_id_can_be_corrected_in_admin(admin_client):
     assert resp.status_code == 302, resp.context["adminform"].form.errors
     movie.refresh_from_db()
     assert movie.tmdb_id == 949
+
+
+@pytest.mark.django_db
+def test_movie_poster_path_can_be_edited_in_admin(admin_client):
+    movie = MovieFactory(
+        poster_path="/real.jpg", plot="A heist.", language="English", country="US"
+    )
+    url = f"/admin/movies/movie/{movie.pk}/change/"
+
+    form = admin_client.get(url).context["adminform"].form
+    assert "poster_path" in form.fields
+
+    data = {
+        name: value
+        for name, value in form.initial.items()
+        if name in form.fields and value is not None
+    }
+    data["poster_path"] = "/deliberately-broken.jpg"
+    resp = admin_client.post(url, data)
+    assert resp.status_code == 302, resp.context["adminform"].form.errors
+    movie.refresh_from_db()
+    assert movie.poster_path == "/deliberately-broken.jpg"
+
+
+@pytest.mark.django_db
+def test_movie_changelist_shows_poster_path(admin_client):
+    MovieFactory(poster_path="/listed.jpg")
+
+    resp = admin_client.get("/admin/movies/movie/")
+
+    assert resp.status_code == 200
+    assert "/listed.jpg" in resp.content.decode()
