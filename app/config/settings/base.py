@@ -225,6 +225,11 @@ CELERY_BEAT_SCHEDULE = {
         "task": "movies.tasks.map_tmdb_ids",
         "schedule": crontab(hour=4, minute=0),
     },
+    # Sunday 03:00 UTC (03:00 UK in winter, 04:00 in summer).
+    "check-posters": {
+        "task": "movies.tasks.check_posters",
+        "schedule": crontab(day_of_week=0, hour=3, minute=0),
+    },
 }
 
 if not DEBUG:

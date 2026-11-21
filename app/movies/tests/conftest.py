@@ -2,9 +2,10 @@ import hashlib
 
 import numpy as np
 import pytest
+import requests
 from pytest_factoryboy import register
 
-from movies import embeddings, tmdb
+from movies import embeddings, posters, tmdb
 from movies.models import Movie
 from movies.watch import tmdb_cache
 
@@ -153,3 +154,37 @@ def fake_embedding_model(monkeypatch):
     embeddings.clear_query_cache()
     yield
     embeddings.clear_query_cache()
+
+
+class FakeImages:
+    """Stand-in Session for image HEADs.
+
+    statuses: {path: [outcome, ...]}, each an HTTP status or an exception,
+    used in order; the last one repeats. Unknown paths answer 200.
+    """
+
+    def __init__(self):
+        self.statuses = {}
+        self.requests = []
+
+    def head(self, url, **kwargs):
+        self.requests.append(url)
+        path = url.removeprefix(posters.IMAGE_BASE)
+        outcomes = self.statuses.get(path, [200])
+        outcome = outcomes.pop(0) if len(outcomes) > 1 else outcomes[0]
+        if isinstance(outcome, Exception):
+            raise outcome
+        response = requests.Response()
+        response.status_code = outcome
+        return response
+
+    def count(self, path):
+        return self.requests.count(posters.image_url(path))
+
+
+@pytest.fixture
+def images(monkeypatch):
+    fake = FakeImages()
+    monkeypatch.setattr(posters, "_session", lambda: fake)
+    monkeypatch.setattr(posters.time, "sleep", lambda s: None)
+    return fake
