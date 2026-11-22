@@ -9,77 +9,27 @@ on:
       - "**"
       - "!main"
 
+# Branch builds build and test; only main pushes images (deploy.yml).
+
 env:
-  WEB_IMAGE: ghcr.io/${{ github.actor }}/${{ github.repository }}
-  IMAGE_NAME: ${{ github.repository }}
+  IMAGE: ghcr.io/mattyocode/mattyocode/moviechooser-api
+  TEST_IMAGE: moviechooser-api:test
+  RUNTIME_IMAGE: moviechooser-api:runtime
 
 jobs:
-  build:
+  build-test:
     runs-on: ubuntu-latest
-    env:
-      # Build-time placeholder for collectstatic. Real configuration is
-      # passed to the container at run time; none of it goes in the image.
-      SECRET_KEY: foosecretkeyforbuildtimeonly
-      DEBUG: 0
-
     permissions:
       contents: read
-      packages: write
-
-    steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
-
-      - name: Set up Docker Buildx
-        id: buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Login to GHCR
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Docker meta
-        id: docker_meta
-        uses: docker/metadata-action@v5
-        with:
-          images: |
-            ${{ env.WEB_IMAGE }}
-
-      - name: Build and push
-        id: docker_build
-        uses: docker/build-push-action@v5
-        with:
-          context: app
-          file: app/Dockerfile.prod
-          builder: ${{ steps.buildx.outputs.name }}
-          push: true
-          tags: ${{ steps.docker_meta.outputs.tags }}
-          labels: ${{ steps.docker_meta.outputs.labels }}
-          cache-from: type=gha, scope=${{ github.workflow }}
-          cache-to: type=gha, scope=${{ github.workflow }}
-          build-args: |
-            SECRET_KEY=${{ env.SECRET_KEY }}
-
-      - name: Show image digest
-        run: echo ${{ steps.docker_build.outputs.digest }}
-
-  test:
-    runs-on: ubuntu-latest
-    needs: build
     env:
       SECRET_KEY: ${{ secrets.SECRET_KEY }}
       DJANGO_ALLOWED_HOSTS: localhost 127.0.0.1
-      SQL_ENGINE: ${{ secrets.SQL_ENGINE }}
+      SQL_ENGINE: django.db.backends.postgresql
       SQL_DATABASE: ci_db_test
       SQL_USER: postgres
       SQL_PASSWORD: postgres
       SQL_HOST: localhost
       SQL_PORT: 5432
-      DATABASE: postgres
-      DJANGO_SETTINGS_MODULE: config.settings.prod
 
     services:
       postgres:
@@ -100,56 +50,73 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Login to GHCR
-        uses: docker/login-action@v3
+      - name: Validate prod compose file
+        run: |
+          touch .env.prod .env.prod.db .env.tunnel
+          docker compose -f docker-compose.prod.yml config -q
+
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@v3
+
+      # The test target is the runtime image plus the dev dependencies.
+      - name: Build test image
+        uses: docker/build-push-action@v5
         with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Branch name if push
-        if: github.event_name == 'push'
-        run: |
-          echo "BRANCH_REF=${GITHUB_BASE_REF:-${GITHUB_REF#refs/heads/}}" >> $GITHUB_ENV
-          ${{ env.BRANCH_REF}}
-
-      - name: Branch name if pull_request
-        if: github.event_name == 'pull_request'
-        run: |
-          echo "BRANCH_REF=${{ github.head_ref }}" >> $GITHUB_ENV
-          ${{ env.BRANCH_REF}}
+          context: app
+          file: app/Dockerfile.prod
+          target: test
+          builder: ${{ steps.buildx.outputs.name }}
+          load: true
+          tags: ${{ env.TEST_IMAGE }}
+          cache-from: |
+            type=gha,scope=api-test
+            type=gha,scope=api-runtime
+          cache-to: type=gha,mode=max,scope=api-test
 
       # Host network so the container reaches the pgvector service on localhost.
-      # Without the SQL_* vars, settings fall back to SQLite and the pgvector
-      # migration fails.
-      - name: Pull image and run container
-        env:
-          SECRET_KEY: ${{ secrets.SECRET_KEY }}
-          SQL_ENGINE: django.db.backends.postgresql
+      - name: Start test container
         run: |
-          docker pull ${{ env.WEB_IMAGE }}:${{ env.BRANCH_REF}}
-          docker run -d --network host -e SECRET_KEY="$SECRET_KEY" \
+          docker run -d --network host --name test_image --entrypoint sleep \
+            -e SECRET_KEY -e DJANGO_ALLOWED_HOSTS \
             -e SQL_ENGINE -e SQL_DATABASE -e SQL_USER -e SQL_PASSWORD \
-            -e SQL_HOST -e SQL_PORT -e DATABASE \
-            --name latest_image ${{ env.WEB_IMAGE }}:"${{ env.BRANCH_REF}}"
-
-      # Images must not contain env files. Checks the pulled image itself, so
-      # it doesn't depend on the app container booting.
-      - name: Check image has no env files
-        run: |
-          docker run --rm --entrypoint sh ${{ env.WEB_IMAGE }}:"${{ env.BRANCH_REF}}" -c \
-            'found=$(find /app -name ".env*" ! -name ".env.example" ! -name ".env.db.example"); if [ -n "$found" ]; then echo "Env files in image: $found"; exit 1; fi; echo "No env files in image"'
+            -e SQL_HOST -e SQL_PORT \
+            ${{ env.TEST_IMAGE }} infinity
 
       - name: Run tests
         run: |
-          docker exec -u root -e DEBUG=1 latest_image pytest -vv -p no:cacheprovider -p no:warnings --cov=.
-          docker exec -u root latest_image flake8
-          docker exec -u root latest_image black --check --exclude=migrations .
-          docker exec -u root latest_image isort . --check-only
+          docker exec -e DEBUG=1 test_image pytest -vv -p no:cacheprovider -p no:warnings --cov=.
+          docker exec test_image flake8
+          docker exec test_image black --check --exclude=migrations .
+          docker exec test_image isort . --check-only
 
-      - name: Run django tests
-        env:
-          DEBUG: 0
+      - name: Run django deploy checks
+        run: docker exec -e DEBUG=0 test_image python manage.py check --deploy --fail-level=WARNING
+
+      - name: Build runtime image
+        uses: docker/build-push-action@v5
+        with:
+          context: app
+          file: app/Dockerfile.prod
+          target: runtime
+          builder: ${{ steps.buildx.outputs.name }}
+          load: true
+          tags: |
+            ${{ env.RUNTIME_IMAGE }}
+          cache-from: type=gha,scope=api-runtime
+          cache-to: type=gha,mode=max,scope=api-runtime
+
+      - name: Show runtime image size
+        run: docker image ls ${{ env.RUNTIME_IMAGE }}
+
+      # Images must not contain env files.
+      - name: Check image has no env files
         run: |
-          echo DEBUG "$DEBUG"
-          docker exec -u root -e DEBUG=0 latest_image python manage.py check --deploy --fail-level=WARNING
+          docker run --rm --entrypoint sh ${{ env.RUNTIME_IMAGE }} -c \
+            'found=$(find /app -name ".env*" ! -name ".env.example" ! -name ".env.db.example"); if [ -n "$found" ]; then echo "Env files in image: $found"; exit 1; fi; echo "No env files in image"'
+
+      - name: Check image runs as non-root
+        run: |
+          uid=$(docker run --rm --entrypoint id ${{ env.RUNTIME_IMAGE }} -u)
+          echo "Runtime UID: $uid"
+          if [ "$uid" = "0" ]; then echo "Runtime image runs as root"; exit 1; fi
