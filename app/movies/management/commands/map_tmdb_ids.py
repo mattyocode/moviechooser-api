@@ -8,14 +8,8 @@ into a CommandError, and prints the summary.
 from django.core.management.base import BaseCommand, CommandError
 
 from movies import tmdb
+from movies.management.args import non_negative_float
 from movies.tmdb_mapping import DEFAULT_SLEEP, map_tmdb_ids
-
-
-def non_negative_float(value):
-    number = float(value)
-    if number < 0:
-        raise ValueError("must be >= 0")
-    return number
 
 
 class Command(BaseCommand):

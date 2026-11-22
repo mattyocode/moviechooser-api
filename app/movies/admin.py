@@ -40,6 +40,12 @@ class MovieAdmin(admin.ModelAdmin):
         "type_field",
     )
 
+    def save_model(self, request, obj, form, change):
+        # A new tmdb_id or path is worth asking TMDB about again.
+        if {"tmdb_id", "poster_path"} & set(form.changed_data):
+            obj.no_poster_checked_at = None
+        super().save_model(request, obj, form, change)
+
 
 @admin.register(MoviePlot)
 class MoviePlotAdmin(admin.ModelAdmin):

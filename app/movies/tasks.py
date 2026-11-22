@@ -2,6 +2,7 @@ import logging
 import random
 import time
 
+from django.conf import settings
 from django.db import transaction
 
 from config.celery import app
@@ -11,6 +12,10 @@ from .models import Actor, Director, Genre, Movie, Review
 from .utils import OMDBFetch, get_imdbids_from_webpage
 
 logger = logging.getLogger(__name__)
+
+# check_posters stops starting new work this many seconds in, leaving five
+# minutes for in-flight requests and the summary before the hard limit.
+POSTER_TIME_BUDGET = settings.CELERY_TASK_TIME_LIMIT - 5 * 60
 
 
 @transaction.atomic
@@ -95,13 +100,15 @@ def check_posters():
     paths.
 
     Returns the counts, so they show in the result backend and worker log.
-    Raises PosterCheckFailed (after logging the summary) when more than 5%
-    are still broken, and TMDBNotConfigured without a token, failing the
-    task visibly either way.
+    Stops starting new work POSTER_TIME_BUDGET seconds in, so it finishes
+    before Celery's hard time limit kills it. Raises PosterCheckFailed
+    (after logging the summary) when the result has a problem (too many
+    still broken, or out of time), and TMDBNotConfigured without a token,
+    failing the task visibly either way.
     """
-    result = posters.check_posters()
+    result = posters.check_posters(time_budget=POSTER_TIME_BUDGET)
     logger.info("check_posters: %s", result)
-    if result.over_threshold:
-        logger.error("check_posters: more than 5%% still broken: %s", result)
-        raise posters.PosterCheckFailed(str(result))
+    if problem := result.problem():
+        logger.error("check_posters: %s", problem)
+        raise posters.PosterCheckFailed(problem)
     return result.as_dict()

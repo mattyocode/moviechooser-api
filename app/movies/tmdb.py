@@ -12,6 +12,13 @@ from django.conf import settings
 
 BASE_URL = "https://api.themoviedb.org/3"
 TIMEOUT = 3
+IMAGE_BASE = "https://image.tmdb.org/t/p"
+
+
+def image_url(size, path):
+    """The URL of a TMDB image path such as "/abc123.jpg" at a size such as
+    "w342"."""
+    return f"{IMAGE_BASE}/{size}{path}"
 
 
 class TMDBError(Exception):
@@ -38,6 +45,9 @@ class TMDBClient:
         self.session.headers.update(
             {"Authorization": f"Bearer {token}", "Accept": "application/json"}
         )
+
+    def close(self):
+        self.session.close()
 
     def _get(self, path, params=None):
         try:

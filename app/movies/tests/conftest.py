@@ -135,6 +135,9 @@ class FakeTMDBClient:
     def count(self, kind):
         return sum(1 for call_kind, _ in self.calls if call_kind == kind)
 
+    def close(self):
+        pass
+
 
 @pytest.fixture
 def fake_tmdb(db, monkeypatch):
@@ -166,10 +169,11 @@ class FakeImages:
     def __init__(self):
         self.statuses = {}
         self.requests = []
+        self.closed = 0
 
     def head(self, url, **kwargs):
         self.requests.append(url)
-        path = url.removeprefix(posters.IMAGE_BASE)
+        path = url.removeprefix(posters.image_url(""))
         outcomes = self.statuses.get(path, [200])
         outcome = outcomes.pop(0) if len(outcomes) > 1 else outcomes[0]
         if isinstance(outcome, Exception):
@@ -181,10 +185,19 @@ class FakeImages:
     def count(self, path):
         return self.requests.count(posters.image_url(path))
 
+    def close(self):
+        self.closed += 1
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        self.close()
+
 
 @pytest.fixture
 def images(monkeypatch):
     fake = FakeImages()
-    monkeypatch.setattr(posters, "_session", lambda: fake)
+    monkeypatch.setattr(posters, "_new_session", lambda: fake)
     monkeypatch.setattr(posters.time, "sleep", lambda s: None)
     return fake

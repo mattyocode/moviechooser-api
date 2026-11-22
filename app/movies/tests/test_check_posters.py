@@ -67,7 +67,13 @@ def test_weekly_task_returns_the_counts(fake_tmdb, images):
     MovieFactory(imdbid="tt1", tmdb_id=1, poster_path=None)
     fake_tmdb.posters[1] = "/found.jpg"
 
-    assert task() == {"checked": 0, "fixed": 1, "missing": 0, "broken": 0}
+    assert task() == {
+        "checked": 1,
+        "fixed": 1,
+        "missing": 0,
+        "broken": 0,
+        "complete": True,
+    }
     assert Movie.objects.get(imdbid="tt1").poster_path == "/found.jpg"
 
 
@@ -81,6 +87,22 @@ def test_weekly_task_fails_over_the_threshold(fake_tmdb, images, caplog):
     with pytest.raises(PosterCheckFailed, match="broken=1"):
         task()
     assert "checked=1 fixed=0 missing=0 broken=1" in caplog.text
+
+
+def test_weekly_task_fails_when_out_of_time(fake_tmdb, images, monkeypatch):
+    from movies import tasks
+
+    monkeypatch.setattr(tasks, "POSTER_TIME_BUDGET", 0)
+    MovieFactory(imdbid="tt1", tmdb_id=1, poster_path="/a.jpg")
+
+    with pytest.raises(PosterCheckFailed, match="Ran out of time"):
+        tasks.check_posters()
+
+
+def test_weekly_task_budget_is_inside_the_celery_time_limit(settings):
+    from movies.tasks import POSTER_TIME_BUDGET
+
+    assert 0 < POSTER_TIME_BUDGET < settings.CELERY_TASK_TIME_LIMIT
 
 
 def test_weekly_schedule_entry(settings):

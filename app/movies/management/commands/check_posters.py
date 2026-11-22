@@ -2,16 +2,15 @@
 
 The work is done by movies.posters.check_posters, which the weekly Celery
 task also calls. This command only parses options, turns a missing token
-into a CommandError, prints the summary, and fails when more than 5% of
-posters are still broken.
+into a CommandError, prints the summary, and fails when the result has a
+problem (too many posters still broken).
 """
 
 from django.core.management.base import BaseCommand, CommandError
 
 from movies import tmdb
+from movies.management.args import non_negative_float
 from movies.posters import DEFAULT_SLEEP, check_posters
-
-from .map_tmdb_ids import non_negative_float
 
 
 class Command(BaseCommand):
@@ -25,7 +24,10 @@ class Command(BaseCommand):
             "--sleep",
             type=non_negative_float,
             default=DEFAULT_SLEEP,
-            help=f"Seconds to wait between TMDB requests (default {DEFAULT_SLEEP}).",
+            help=(
+                "Seconds each worker waits before a TMDB request "
+                f"(default {DEFAULT_SLEEP})."
+            ),
         )
 
     def handle(self, *args, sleep=DEFAULT_SLEEP, **options):
@@ -34,5 +36,5 @@ class Command(BaseCommand):
         except tmdb.TMDBNotConfigured as e:
             raise CommandError(f"{e}. Set TMDB_READ_TOKEN to run check_posters.")
         self.stdout.write(str(result))
-        if result.over_threshold:
-            raise CommandError(f"More than 5% of posters still broken: {result}")
+        if problem := result.problem():
+            raise CommandError(problem)

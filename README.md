@@ -81,23 +81,25 @@ Each movie stores TMDB's `poster_path` (for example `/abc123.jpg`), and the app 
 `check_posters` works in two passes:
 
 1. **Check.** It sends a HEAD request for each stored path's `w342` image, four at a time. Connection errors, timeouts, 429 and 5xx are retried (3 tries in all). A 404 is final.
-2. **Repair.** Every movie whose image is broken, and every mapped movie with no path yet, is re-read from TMDB (`/movie/{tmdb_id}`), one at a time with `--sleep SECONDS` (default 0.05) between requests. The path TMDB gives now is stored. A movie TMDB has no poster for gets a null path. A failed lookup leaves the stored path alone.
+2. **Repair.** Every movie whose image is broken, and every mapped movie with no path yet, is re-read from TMDB (`/movie/{tmdb_id}`), four at a time, each worker waiting `--sleep SECONDS` (default 0.05) before a request. The path TMDB gives now is stored and its image checked. If TMDB gives the same path that failed, it's checked once more before counting as broken, so a brief CDN problem isn't. A movie TMDB has no poster for gets a null path and isn't asked about again for 90 days (sooner if its `tmdb_id` or `poster_path` is changed in the admin). A failed lookup leaves the stored path alone, and so does a change made to the movie while the run is going.
+
+`poster_path` is null when there's no path; an empty string is refused by a database constraint.
 
 It ends with `checked=N fixed=F missing=M broken=B`:
 
-- `checked`: paths checked in the first pass.
+- `checked`: movies whose image was checked, in either pass (so a first-run backfill counts the new paths).
 - `fixed`: paths stored that now load.
 - `missing`: movies with no path at the end, including unmapped ones.
 - `broken`: images that still don't load.
 
-It fails (a non-zero exit, or a failed task) when `broken` is more than 5% of `checked`, and refuses to run without a token.
+It fails (a non-zero exit, or a failed task) when `broken` is more than 5% of `checked`, and refuses to run without a token. The weekly task also stops starting new work 25 minutes in (five minutes before Celery's 30-minute hard limit), ends the summary with `incomplete`, and fails.
 
 ```bash
 # dev / your laptop
 docker compose -f docker-compose.dev.yml exec movies python manage.py check_posters
 ```
 
-On the server it runs every Sunday at 03:00 UTC as the `check-posters` beat job (see [Background jobs](#background-jobs)). The first run is the backfill for movies mapped before `poster_path` existed: about one TMDB request per movie, which takes 10–15 minutes for the full catalogue. Run it once by hand after the first deploy, after `map_tmdb_ids`. To test a repair, set a movie's `poster_path` to something wrong in the admin and run the command again.
+On the server it runs every Sunday at 03:00 UTC as the `check-posters` beat job (see [Background jobs](#background-jobs)). The first run is the backfill for movies mapped before `poster_path` existed: about one TMDB request per movie, four at a time, which should take a few minutes for the full catalogue. Run it once by hand after the first deploy, after `map_tmdb_ids`. To test a repair, set a movie's `poster_path` to something wrong in the admin and run the command again.
 
 ### Endpoints
 

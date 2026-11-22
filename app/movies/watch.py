@@ -14,7 +14,7 @@ FAILURE_TTL = 60
 REGIONS_TTL = 7 * 24 * 60 * 60
 REGIONS_KEY = "tmdb:regions"
 
-LOGO_BASE = "https://image.tmdb.org/t/p/w92"
+LOGO_SIZE = "w92"
 WATCH_PAGE = "https://www.themoviedb.org/movie/{tmdb_id}/watch"
 
 # TMDB offer type -> our kind, in display order. Free and ad-supported offers
@@ -87,7 +87,7 @@ def map_providers(country_data):
                 "provider_id": provider_id,
                 "name": provider.get("provider_name", ""),
                 "kind": kind,
-                "logo": f"{LOGO_BASE}{logo_path}" if logo_path else None,
+                "logo": tmdb.image_url(LOGO_SIZE, logo_path) if logo_path else None,
             }
         )
     return providers
