@@ -7,6 +7,7 @@ from movies.tmdb import (
     TIMEOUT,
     TMDBClient,
     TMDBError,
+    TMDBMatch,
     TMDBNotConfigured,
     get_tmdb_client,
 )
@@ -37,7 +38,7 @@ def session():
 
 def test_token_sent_as_bearer_header_not_in_url(session):
     session.get.return_value = fake_response({"movie_results": []})
-    TMDBClient("secret-token", session=session).find_movie_id("tt0113277")
+    TMDBClient("secret-token", session=session).find_movie("tt0113277")
 
     assert session.headers["Authorization"] == "Bearer secret-token"
     args, kwargs = session.get.call_args
@@ -47,7 +48,7 @@ def test_token_sent_as_bearer_header_not_in_url(session):
 
 def test_find_uses_imdb_external_source_and_timeout(session):
     session.get.return_value = fake_response({"movie_results": []})
-    TMDBClient("t", session=session).find_movie_id("tt0113277")
+    TMDBClient("t", session=session).find_movie("tt0113277")
 
     args, kwargs = session.get.call_args
     assert args[0] == "https://api.themoviedb.org/3/find/tt0113277"
@@ -55,18 +56,47 @@ def test_find_uses_imdb_external_source_and_timeout(session):
     assert kwargs["timeout"] == TIMEOUT == 3
 
 
-def test_find_returns_first_movie_result(session):
+def test_find_returns_first_movie_result_with_poster_path(session):
     session.get.return_value = fake_response(
-        {"movie_results": [{"id": 949}, {"id": 1}], "tv_results": []}
+        {
+            "movie_results": [
+                {"id": 949, "poster_path": "/heat.jpg"},
+                {"id": 1, "poster_path": "/other.jpg"},
+            ],
+            "tv_results": [],
+        }
     )
-    assert TMDBClient("t", session=session).find_movie_id("tt0113277") == 949
+    assert TMDBClient("t", session=session).find_movie("tt0113277") == TMDBMatch(
+        id=949, poster_path="/heat.jpg"
+    )
+
+
+@pytest.mark.parametrize("result", [{"id": 949, "poster_path": None}, {"id": 949}])
+def test_find_without_poster_gives_none_path(session, result):
+    session.get.return_value = fake_response({"movie_results": [result]})
+    match = TMDBClient("t", session=session).find_movie("tt0113277")
+    assert match == TMDBMatch(id=949, poster_path=None)
 
 
 def test_find_ignores_tv_results(session):
     session.get.return_value = fake_response(
         {"movie_results": [], "tv_results": [{"id": 1399}]}
     )
-    assert TMDBClient("t", session=session).find_movie_id("tt0944947") is None
+    assert TMDBClient("t", session=session).find_movie("tt0944947") is None
+
+
+def test_movie_poster_path_reads_movie_details(session):
+    session.get.return_value = fake_response({"id": 949, "poster_path": "/new.jpg"})
+    assert TMDBClient("t", session=session).movie_poster_path(949) == "/new.jpg"
+
+    args, kwargs = session.get.call_args
+    assert args[0] == "https://api.themoviedb.org/3/movie/949"
+    assert kwargs["timeout"] == TIMEOUT
+
+
+def test_movie_poster_path_none_when_tmdb_has_no_poster(session):
+    session.get.return_value = fake_response({"id": 949, "poster_path": None})
+    assert TMDBClient("t", session=session).movie_poster_path(949) is None
 
 
 def test_watch_providers_returns_results_by_country(session):
@@ -103,9 +133,15 @@ def test_failures_raise_tmdb_error(session, outcome):
         session.get.side_effect = outcome
     else:
         session.get.return_value = outcome
-    with pytest.raises(TMDBError) as exc:
-        TMDBClient("secret-token", session=session).watch_providers(949)
-    assert "secret-token" not in str(exc.value)
+    client = TMDBClient("secret-token", session=session)
+    for call in (
+        lambda: client.watch_providers(949),
+        lambda: client.find_movie("tt0113277"),
+        lambda: client.movie_poster_path(949),
+    ):
+        with pytest.raises(TMDBError) as exc:
+            call()
+        assert "secret-token" not in str(exc.value)
 
 
 def test_get_client_without_token_raises(settings):
@@ -126,6 +162,6 @@ def test_fake_tmdb_fixture_replaces_factory_and_clears_cache(fake_tmdb):
 
     assert tmdb.get_tmdb_client() is fake_tmdb
     fake_tmdb.find["tt1"] = 5
-    assert tmdb.get_tmdb_client().find_movie_id("tt1") == 5
+    assert tmdb.get_tmdb_client().find_movie("tt1") == tmdb.TMDBMatch(id=5)
     assert fake_tmdb.count("find") == 1
     assert tmdb_cache().get("anything") is None

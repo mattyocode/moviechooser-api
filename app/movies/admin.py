@@ -21,6 +21,9 @@ class MovieAdmin(admin.ModelAdmin):
         # Editable so a wrong map_tmdb_ids match can be fixed by hand; the
         # command never overwrites a mapped movie.
         "tmdb_id",
+        # Editable so a path can be fixed (or deliberately broken, to test
+        # check_posters) by hand; check_posters repairs a broken one weekly.
+        "poster_path",
     )
     list_display = (
         "imdbid",
@@ -33,8 +36,15 @@ class MovieAdmin(admin.ModelAdmin):
         "language",
         "country",
         "poster_url",
+        "poster_path",
         "type_field",
     )
+
+    def save_model(self, request, obj, form, change):
+        # A new tmdb_id or path is worth asking TMDB about again.
+        if {"tmdb_id", "poster_path"} & set(form.changed_data):
+            obj.no_poster_checked_at = None
+        super().save_model(request, obj, form, change)
 
 
 @admin.register(MoviePlot)

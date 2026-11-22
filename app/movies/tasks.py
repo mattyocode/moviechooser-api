@@ -2,15 +2,20 @@ import logging
 import random
 import time
 
+from django.conf import settings
 from django.db import transaction
 
 from config.celery import app
 
-from . import tmdb_mapping
+from . import posters, tmdb_mapping
 from .models import Actor, Director, Genre, Movie, Review
 from .utils import OMDBFetch, get_imdbids_from_webpage
 
 logger = logging.getLogger(__name__)
+
+# check_posters stops starting new work this many seconds in, leaving five
+# minutes for in-flight requests and the summary before the hard limit.
+POSTER_TIME_BUDGET = settings.CELERY_TASK_TIME_LIMIT - 5 * 60
 
 
 @transaction.atomic
@@ -86,4 +91,24 @@ def map_tmdb_ids():
     """
     result = tmdb_mapping.map_tmdb_ids()
     logger.info("map_tmdb_ids: %s", result)
+    return result.as_dict()
+
+
+@app.task()
+def check_posters():
+    """Weekly: check every TMDB poster loads, and repair broken and missing
+    paths.
+
+    Returns the counts, so they show in the result backend and worker log.
+    Stops starting new work POSTER_TIME_BUDGET seconds in, so it finishes
+    before Celery's hard time limit kills it. Raises PosterCheckFailed
+    (after logging the summary) when the result has a problem (too many
+    still broken, or out of time), and TMDBNotConfigured without a token,
+    failing the task visibly either way.
+    """
+    result = posters.check_posters(time_budget=POSTER_TIME_BUDGET)
+    logger.info("check_posters: %s", result)
+    if problem := result.problem():
+        logger.error("check_posters: %s", problem)
+        raise posters.PosterCheckFailed(problem)
     return result.as_dict()

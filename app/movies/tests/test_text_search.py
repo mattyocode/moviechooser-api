@@ -213,12 +213,20 @@ def test_filters_excluding_everything_return_empty(client, searchable):
 @pytest.mark.django_db
 def test_quality_bar_applies(client, searchable):
     searchable("poorly-reviewed", review=[30])
-    searchable("no-poster", poster_url="N/A")
     searchable("fine", vec(1, 1), vec(1, 1))
 
     resp = client.get(LIST_URL, {"q": "heist"})
 
     assert slugs(resp) == ["fine"]
+
+
+@pytest.mark.django_db
+def test_movie_without_poster_is_still_ranked(client, searchable):
+    searchable("no-poster", poster_url="N/A", poster_path=None)
+
+    resp = client.get(LIST_URL, {"q": "heist"})
+
+    assert slugs(resp) == ["no-poster"]
 
 
 @pytest.mark.django_db
@@ -243,7 +251,15 @@ def test_items_have_list_fields_and_similarity(client, searchable):
     resp = client.get(LIST_URL, {"q": "heist"})
 
     results = resp.data["results"]
-    for field in ("slug", "title", "poster_url", "genre", "avg_rating", "on_list"):
+    for field in (
+        "slug",
+        "title",
+        "poster_url",
+        "poster_path",
+        "genre",
+        "avg_rating",
+        "on_list",
+    ):
         assert field in results[0]
     scores = [item["similarity"] for item in results]
     assert all(isinstance(score, float) for score in scores)

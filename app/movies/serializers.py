@@ -86,6 +86,7 @@ class MovieSerializer(serializers.ModelSerializer):
             "plot",
             "country",
             "poster_url",
+            "poster_path",
             "actors",
             "director",
             "genre",

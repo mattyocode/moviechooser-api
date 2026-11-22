@@ -50,6 +50,23 @@ class Movie(models.Model):
     # Set by `map_tmdb_ids`. Not unique: two IMDb records can resolve to the
     # same TMDB film, and that shouldn't fail the mapping run.
     tmdb_id = models.PositiveIntegerField(null=True, blank=True, db_index=True)
+    # TMDB's image path for the poster, e.g. "/abc123.jpg" (no host or size).
+    # Set by `map_tmdb_ids`, repaired weekly by `check_posters`; null when
+    # TMDB has no poster or the movie isn't looked up yet. Never "": null is
+    # the only empty value (a constraint enforces it; the admin saves a
+    # blank field as null).
+    poster_path = models.CharField(max_length=100, null=True, blank=True)
+    # When `check_posters` last heard from TMDB that this movie has no
+    # poster, so it doesn't ask again every week. Cleared when a path is
+    # stored, or when tmdb_id or poster_path is changed in the admin.
+    no_poster_checked_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                check=~models.Q(poster_path=""), name="movie_poster_path_not_empty"
+            )
+        ]
 
     def __str__(self):
         return f"{self.title}"

@@ -2,9 +2,10 @@ import hashlib
 
 import numpy as np
 import pytest
+import requests
 from pytest_factoryboy import register
 
-from movies import embeddings, tmdb
+from movies import embeddings, posters, tmdb
 from movies.models import Movie
 from movies.watch import tmdb_cache
 
@@ -89,13 +90,16 @@ class FakeEmbeddingModel:
 class FakeTMDBClient:
     """Stand-in for movies.tmdb.TMDBClient with canned data and call counts.
 
-    find: {imdbid: tmdb_id or None}; watch: {tmdb_id: results by country};
-    regions: TMDB's regions list. Set fail to True (every call) or to a set
-    of imdbids/tmdb_ids (just those) to raise TMDBError.
+    find: {imdbid: tmdb_id (no poster), a TMDBMatch, or None};
+    posters: {tmdb_id: poster path or None}, what /movie/{id} gives;
+    watch: {tmdb_id: results by country}; regions: TMDB's regions list.
+    Set fail to True (every call) or to a set of imdbids/tmdb_ids (just
+    those) to raise TMDBError.
     """
 
     def __init__(self):
         self.find = {}
+        self.posters = {}
         self.watch = {}
         self.region_list = []
         self.fail = False
@@ -105,10 +109,18 @@ class FakeTMDBClient:
         if self.fail is True or (self.fail and key in self.fail):
             raise tmdb.TMDBError(f"fake failure for {key}")
 
-    def find_movie_id(self, imdbid):
+    def find_movie(self, imdbid):
         self.calls.append(("find", imdbid))
         self._maybe_fail(imdbid)
-        return self.find.get(imdbid)
+        found = self.find.get(imdbid)
+        if found is None or isinstance(found, tmdb.TMDBMatch):
+            return found
+        return tmdb.TMDBMatch(id=found)
+
+    def movie_poster_path(self, tmdb_id):
+        self.calls.append(("poster", tmdb_id))
+        self._maybe_fail(tmdb_id)
+        return self.posters.get(tmdb_id)
 
     def watch_providers(self, tmdb_id):
         self.calls.append(("watch", tmdb_id))
@@ -122,6 +134,9 @@ class FakeTMDBClient:
 
     def count(self, kind):
         return sum(1 for call_kind, _ in self.calls if call_kind == kind)
+
+    def close(self):
+        pass
 
 
 @pytest.fixture
@@ -142,3 +157,47 @@ def fake_embedding_model(monkeypatch):
     embeddings.clear_query_cache()
     yield
     embeddings.clear_query_cache()
+
+
+class FakeImages:
+    """Stand-in Session for image HEADs.
+
+    statuses: {path: [outcome, ...]}, each an HTTP status or an exception,
+    used in order; the last one repeats. Unknown paths answer 200.
+    """
+
+    def __init__(self):
+        self.statuses = {}
+        self.requests = []
+        self.closed = 0
+
+    def head(self, url, **kwargs):
+        self.requests.append(url)
+        path = url.removeprefix(posters.image_url(""))
+        outcomes = self.statuses.get(path, [200])
+        outcome = outcomes.pop(0) if len(outcomes) > 1 else outcomes[0]
+        if isinstance(outcome, Exception):
+            raise outcome
+        response = requests.Response()
+        response.status_code = outcome
+        return response
+
+    def count(self, path):
+        return self.requests.count(posters.image_url(path))
+
+    def close(self):
+        self.closed += 1
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        self.close()
+
+
+@pytest.fixture
+def images(monkeypatch):
+    fake = FakeImages()
+    monkeypatch.setattr(posters, "_new_session", lambda: fake)
+    monkeypatch.setattr(posters.time, "sleep", lambda s: None)
+    return fake

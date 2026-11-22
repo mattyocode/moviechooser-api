@@ -23,6 +23,27 @@ def test_match_stores_first_movie_result(fake_tmdb):
     assert tmdb_id("tt0113277") == 949
 
 
+def test_match_stores_poster_path_from_the_same_lookup(fake_tmdb):
+    MovieFactory(imdbid="tt0113277")
+    fake_tmdb.find["tt0113277"] = tmdb.TMDBMatch(id=949, poster_path="/heat.jpg")
+
+    run()
+
+    movie = Movie.objects.get(imdbid="tt0113277")
+    assert (movie.tmdb_id, movie.poster_path) == (949, "/heat.jpg")
+    assert fake_tmdb.calls == [("find", "tt0113277")]
+
+
+def test_match_without_poster_leaves_path_empty(fake_tmdb):
+    MovieFactory(imdbid="tt0113277")
+    fake_tmdb.find["tt0113277"] = tmdb.TMDBMatch(id=949, poster_path=None)
+
+    run()
+
+    movie = Movie.objects.get(imdbid="tt0113277")
+    assert (movie.tmdb_id, movie.poster_path) == (949, None)
+
+
 def test_no_movie_result_leaves_movie_unmapped(fake_tmdb, caplog):
     # The fake returns None for TV-only and for no results alike, as the
     # real client does (it only reads movie_results).
