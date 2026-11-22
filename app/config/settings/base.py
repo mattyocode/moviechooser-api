@@ -94,7 +94,8 @@ WSGI_APPLICATION = "config.wsgi.application"
 #
 # "tmdb" is Postgres-backed, shared by every worker and kept across restarts.
 # It holds TMDB watch-provider responses (movies/watch.py). The table comes
-# from `manage.py createcachetable`, which the entrypoints run after migrate.
+# from `manage.py createcachetable`, which the dev entrypoint and the prod
+# deploy run after migrate.
 # MAX_ENTRIES covers one row per catalogue movie with room to spare; the
 # default (300) would cull most of them.
 CACHES = {
@@ -236,6 +237,7 @@ CELERY_BEAT_SCHEDULE = {
 }
 
 if not DEBUG:
+    # Console only: Docker captures stdout/stderr and rotates it.
     LOGGING = {
         "version": 1,
         "disable_existing_loggers": False,
@@ -244,34 +246,17 @@ if not DEBUG:
                 "level": "DEBUG",
                 "class": "logging.StreamHandler",
             },
-            "debug_file": {
-                "level": "DEBUG",
-                "class": "logging.FileHandler",
-                "filename": os.path.join(APP_BASE_DIR, "log/debug.log"),
-            },
-            "info_file": {
-                "level": "INFO",
-                "class": "logging.FileHandler",
-                "filename": os.path.join(APP_BASE_DIR, "log/info.log"),
-            },
-            "error_file": {
-                "level": "ERROR",
-                "class": "logging.FileHandler",
-                "filename": os.path.join(APP_BASE_DIR, "log/error.log"),
-            },
         },
+        # dictConfig applies "root" after "loggers", so the root level lives
+        # here only (a "" entry under "loggers" would be overridden).
         "root": {
             "handlers": ["console"],
-            "level": "WARNING",
+            "level": "INFO",
         },
         "loggers": {
             "django": {
                 "handlers": ["console"],
                 "level": "INFO",
-            },
-            "": {
-                "handlers": ["debug_file", "info_file", "error_file", "console"],
-                "level": "DEBUG",
             },
         },
     }

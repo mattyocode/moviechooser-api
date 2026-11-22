@@ -1,35 +1,7 @@
 #!/bin/sh
-
-if [ "$DATABASE" = "postgres" ]
-then
-    echo "Waiting for postgres..."
-
-    while ! nc -z $SQL_HOST $SQL_PORT; do
-      sleep 0.1
-    done
-
-    echo "PostgreSQL started"
-fi
-
-mkdir /log
-mkdir /logs
-# # List of files to create if they don't exist
-# files=("/log/debug.log" "/log/error.log" "/log/info.log")
-
-# # Loop through the list and create each file if it doesn't exist
-# for file in "${files[@]}"; do
-#   if [[ ! -f "$file" ]]; then
-#     touch "$file"
-#     echo "Created $file"
-#   else
-#     echo "$file already exists"
-#   fi
-# done
-
-python manage.py migrate
-# The database cache backend's table (not created by migrate; idempotent).
-python manage.py createcachetable
-gunicorn -c config/gunicorn.py config.wsgi:application --bind 0.0.0.0:8000 --forwarded-allow-ips="18.168.29.188,172.26.14.23" \
---workers 2 --threads 8 --capture-output --access-logfile /logs/gunicorn-access.log --timeout 300
-
-exec "$@"
+set -e
+exec gunicorn -c config/gunicorn.py config.wsgi:application \
+  --bind 0.0.0.0:8000 \
+  --forwarded-allow-ips="*" \
+  --workers 2 --threads 8 --timeout 300 \
+  --access-logfile - --error-logfile - --capture-output

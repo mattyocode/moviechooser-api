@@ -1,67 +1,72 @@
-# syntax = docker/dockerfile:1.2
+# syntax=docker/dockerfile:1
 
-# Pull base image
-FROM python:3.12-slim-bookworm
+# Stages:
+#   base         shared Python image and env; no apt packages
+#   builder      main dependencies in /opt/venv, embedding model in /opt/fastembed
+#   builder-dev  builder plus the dev dependencies (pytest, flake8, black, isort)
+#   runtime      the pushed image: venv, model and source, runs as `app`
+#   test         runtime plus the dev venv; CI runs its checks here
 
-# set environment variables
-ENV PYTHONDONTWRITEBYTECODE 1
-ENV PYTHONUNBUFFERED 1
-ENV PIP_NO_CACHE_DIR off
-ENV PIP_DISABLE_PIP_VERSION_CHECK on
-ENV PIP_DEFAULT_TIMEOUT=100
-ENV POETRY_VERSION 2.5.1
-ENV DEBUG 0
-ENV DJANGO_SETTINGS_MODULE config.settings.prod
-ARG SECRET_KEY=runtimetempsecretkey
-ENV DJANGO_ALLOWED_HOSTS 0.0.0.0 localhost 127.0.0.1
+FROM python:3.12-slim-bookworm AS base
 
-ARG SQL_ENGINE django.db.backends.postgresql
-ARG SQL_DATABASE postgres
-ARG SQL_USER postgres
-ARG SQL_PASSWORD postgrespw
-ARG SQL_HOST localhost
-ARG SQL_PORT 5432
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    DJANGO_SETTINGS_MODULE=config.settings.prod \
+    DEBUG=0 \
+    FASTEMBED_CACHE_PATH=/opt/fastembed \
+    VIRTUAL_ENV=/opt/venv \
+    PATH=/opt/venv/bin:$PATH
 
-# install postgres deps
-RUN apt-get update \
-  && apt-get -y install netcat-openbsd gcc postgresql \
-  && apt-get clean
-
-# install dependencies
-RUN pip install "poetry==$POETRY_VERSION"
-
-# set working directory
 WORKDIR /app
-# copy only requirements to cache them in Docker layer
-COPY poetry.lock pyproject.toml /app/
 
-RUN poetry config virtualenvs.create false \
-  && poetry install --no-interaction --no-ansi
 
-# bake the plot embedding model in, outside the ./app bind mount
-ENV FASTEMBED_CACHE_PATH /opt/fastembed
+FROM base AS builder
+
+# Poetry lives in its own venv so it never reaches the runtime image. With
+# virtualenvs.create off and VIRTUAL_ENV set, it installs into /opt/venv.
+ENV POETRY_VERSION=2.5.1 \
+    POETRY_VIRTUALENVS_CREATE=false \
+    POETRY_NO_INTERACTION=1
+RUN python -m venv /opt/venv \
+    && python -m venv /opt/poetry \
+    && /opt/poetry/bin/pip install "poetry==$POETRY_VERSION"
+
+COPY poetry.lock pyproject.toml ./
+RUN /opt/poetry/bin/poetry install --only main --no-root --no-interaction --no-ansi
+
+# Bake the plot embedding model in, so containers never download it.
 RUN python -c "from fastembed import TextEmbedding; TextEmbedding('BAAI/bge-small-en-v1.5', cache_dir='/opt/fastembed')"
 
-# copy entrypoint.prod.sh
-COPY ./entrypoint.prod.sh /app/entrypoint.prod.sh
-# RUN chmod 755 /app/entrypoint.prod.sh
-RUN ["chmod", "+x", "/app/entrypoint.prod.sh"]
 
-COPY . .
+FROM builder AS builder-dev
 
-# Create log file
-RUN mkdir -p /app/log \
-    && touch /app/log/debug.log \
-    && touch /app/log/error.log \
-    && touch /app/log/info.log
-
-# collect static files
-RUN python manage.py collectstatic --noinput
+RUN /opt/poetry/bin/poetry install --with dev --no-root --no-interaction --no-ansi
 
 
-# add and run as non-root user
-# RUN adduser --disabled-password myuser
-# USER myuser
+FROM base AS runtime
 
+RUN groupadd --system --gid 10001 app \
+    && useradd --system --uid 10001 --gid app --create-home --shell /usr/sbin/nologin app
+
+COPY --from=builder /opt/venv /opt/venv
+COPY --from=builder /opt/fastembed /opt/fastembed
+COPY --chown=app:app . .
+# Keep the entrypoint executable even if the checkout lost its exec bit.
+RUN chmod 755 /app/entrypoint.prod.sh
+
+# Throwaway values: collectstatic only needs settings to load. Real config is
+# passed at run time.
+RUN SECRET_KEY=collectstatic-only DJANGO_ALLOWED_HOSTS=localhost \
+    python manage.py collectstatic --noinput
+
+USER app
 
 ENTRYPOINT ["/app/entrypoint.prod.sh"]
+
+
+FROM runtime AS test
+
+USER root
+COPY --from=builder-dev /opt/venv /opt/venv
