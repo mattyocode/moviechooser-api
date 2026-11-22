@@ -5,8 +5,8 @@ import pytest
 from pytest_factoryboy import register
 
 from movies import embeddings, tmdb
-from movies.watch import tmdb_cache
 from movies.models import Movie
+from movies.watch import tmdb_cache
 
 from .factories import GenreFactory, MovieFactory
 
