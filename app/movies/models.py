@@ -47,6 +47,9 @@ class Movie(models.Model):
     type_field = models.CharField(
         db_column="type_", max_length=12, null=True, default="movie"
     )
+    # Set by `map_tmdb_ids`. Not unique: two IMDb records can resolve to the
+    # same TMDB film, and that shouldn't fail the mapping run.
+    tmdb_id = models.PositiveIntegerField(null=True, blank=True, db_index=True)
 
     def __str__(self):
         return f"{self.title}"
@@ -56,17 +59,6 @@ class Movie(models.Model):
 def pre_save_receiver(sender, instance, *args, **kwargs):
     if not instance.slug:
         instance.slug = unique_slug(instance)
-
-
-class OnDemand(models.Model):
-    movie = models.ForeignKey(Movie, on_delete=models.CASCADE, related_name="ondemand")
-    service = models.CharField(max_length=50)
-    url = models.CharField(max_length=300)
-    added = models.DateTimeField(auto_now_add=True)
-    updated = models.DateTimeField(auto_now=True)
-
-    def __str__(self):
-        return self.movie.imdbid + "--" + self.service
 
 
 class Review(models.Model):

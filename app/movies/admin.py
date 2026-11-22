@@ -18,6 +18,9 @@ class MovieAdmin(admin.ModelAdmin):
         "country",
         "poster_url",
         "type_field",
+        # Editable so a wrong map_tmdb_ids match can be fixed by hand; the
+        # command never overwrites a mapped movie.
+        "tmdb_id",
     )
     list_display = (
         "imdbid",

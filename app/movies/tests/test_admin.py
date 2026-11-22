@@ -4,7 +4,7 @@ from django.contrib.admin.sites import site
 
 from movies.models import MoviePlot
 
-from .factories import MoviePlotFactory
+from .factories import MovieFactory, MoviePlotFactory
 
 
 @pytest.fixture
@@ -40,3 +40,23 @@ def test_movieplot_changelist_does_not_load_vectors_or_text(rf, plots):
         "embedding",
         "premise_embedding",
     } <= queryset.first().get_deferred_fields()
+
+
+@pytest.mark.django_db
+def test_movie_tmdb_id_can_be_corrected_in_admin(admin_client):
+    movie = MovieFactory(tmdb_id=111, plot="A heist.", language="English", country="US")
+    url = f"/admin/movies/movie/{movie.pk}/change/"
+
+    form = admin_client.get(url).context["adminform"].form
+    assert "tmdb_id" in form.fields
+
+    data = {
+        name: value
+        for name, value in form.initial.items()
+        if name in form.fields and value is not None
+    }
+    data["tmdb_id"] = 949
+    resp = admin_client.post(url, data)
+    assert resp.status_code == 302, resp.context["adminform"].form.errors
+    movie.refresh_from_db()
+    assert movie.tmdb_id == 949

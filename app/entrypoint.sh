@@ -12,5 +12,7 @@ then
 fi
 
 python manage.py migrate
+# The database cache backend's table (not created by migrate; idempotent).
+python manage.py createcachetable
 
 exec "$@"
