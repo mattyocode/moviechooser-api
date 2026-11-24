@@ -126,6 +126,11 @@ jobs:
           echo "Runtime UID: $uid"
           if [ "$uid" = "0" ]; then echo "Runtime image runs as root"; exit 1; fi
 
+      # Boot the image that gets pushed, as the server will: migrate, real
+      # entrypoint, non-root, health check and embedding model load.
+      - name: Smoke test runtime image
+        run: sh .github/scripts/smoke-runtime.sh ${{ env.RUNTIME_IMAGE }}
+
       # Push only after every check above passed, and push the image that was
       # checked (the runtime target), never the test target.
       - name: Login to GHCR

@@ -12,7 +12,6 @@ on:
 # Branch builds build and test; only main pushes images (deploy.yml).
 
 env:
-  IMAGE: ghcr.io/mattyocode/mattyocode/moviechooser-api
   TEST_IMAGE: moviechooser-api:test
   RUNTIME_IMAGE: moviechooser-api:runtime
 
@@ -120,3 +119,8 @@ jobs:
           uid=$(docker run --rm --entrypoint id ${{ env.RUNTIME_IMAGE }} -u)
           echo "Runtime UID: $uid"
           if [ "$uid" = "0" ]; then echo "Runtime image runs as root"; exit 1; fi
+
+      # Boot the image that gets pushed, as the server will: migrate, real
+      # entrypoint, non-root, health check and embedding model load.
+      - name: Smoke test runtime image
+        run: sh .github/scripts/smoke-runtime.sh ${{ env.RUNTIME_IMAGE }}
