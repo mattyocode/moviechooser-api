@@ -94,8 +94,8 @@ WSGI_APPLICATION = "config.wsgi.application"
 #
 # "tmdb" is Postgres-backed, shared by every worker and kept across restarts.
 # It holds TMDB watch-provider responses (movies/watch.py). The table comes
-# from `manage.py createcachetable`, which the dev entrypoint and the prod
-# deploy run after migrate.
+# from `manage.py createcachetable`, which the dev entrypoint runs after
+# migrate. In prod, the deploy script (a later PR) will run both.
 # MAX_ENTRIES covers one row per catalogue movie with room to spare; the
 # default (300) would cull most of them.
 CACHES = {
@@ -237,7 +237,8 @@ CELERY_BEAT_SCHEDULE = {
 }
 
 if not DEBUG:
-    # Console only: Docker captures stdout/stderr and rotates it.
+    # Console only: Docker captures stdout/stderr. docker-compose.prod.yml
+    # caps and rotates those logs (json-file max-size / max-file).
     LOGGING = {
         "version": 1,
         "disable_existing_loggers": False,
@@ -254,8 +255,9 @@ if not DEBUG:
             "level": "INFO",
         },
         "loggers": {
+            # No handler of its own: records propagate to root's console
+            # handler, so each one is printed once.
             "django": {
-                "handlers": ["console"],
                 "level": "INFO",
             },
         },

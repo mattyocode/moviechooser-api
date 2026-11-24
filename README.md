@@ -111,7 +111,7 @@ Movie payloads carry `has_tmdb`, and the app shows its Watch button only when it
 
 ### Caching
 
-TMDB data goes in the `tmdb` cache, Django's database cache (the `django_cache` table, created by `createcachetable`, which the dev entrypoint and the prod deploy run after `migrate`). It's shared by every worker and kept across restarts. The default cache, which DRF's throttles use on every request, stays in per-process memory.
+TMDB data goes in the `tmdb` cache, Django's database cache (the `django_cache` table, created by `createcachetable`, which the dev entrypoint runs after `migrate`; in prod, the deploy script will run both — it is added in a later PR, so run them by hand until then). It's shared by every worker and kept across restarts. The default cache, which DRF's throttles use on every request, stays in per-process memory.
 
 - Each movie's full TMDB response, covering every country, is kept for 24 hours, so one call serves all countries.
 - A failed lookup is remembered for 60 seconds, so an outage doesn't send a request to TMDB on every panel open.
@@ -125,7 +125,7 @@ Celery runs background and scheduled work. Both compose files (dev and prod) run
 - the worker (`celery` in dev, `celery-worker` in prod): runs tasks. In prod it runs one task at a time (`--concurrency=1`), because each worker child is a full Django process.
 - `celery-beat`: queues scheduled jobs. **Run exactly one.** A second beat queues every job twice.
 
-In prod, the worker and beat override the image's entrypoint, so they never start gunicorn. No container runs `migrate` on start; the deploy runs it before swapping containers.
+In prod, the worker and beat override the image's entrypoint, so they never start gunicorn. No container runs `migrate` on start. The deploy script, added in a later PR, will run it before swapping containers; until then, run `migrate` and `createcachetable` by hand before `up`.
 
 Scheduled jobs are declared in one place: `CELERY_BEAT_SCHEDULE` in `config/settings/base.py`. Times are in UTC. `movies/tests/test_celery_schedule.py` fails if an entry names a task that isn't registered. The broker defaults to `redis://redis:6379/0`. Set `CELERY_BROKER_URL` / `CELERY_RESULT_BACKEND` to point elsewhere.
 
