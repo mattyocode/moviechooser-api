@@ -53,6 +53,9 @@ RUN groupadd --system --gid 10001 app \
 COPY --from=builder /opt/venv /opt/venv
 COPY --from=builder /opt/fastembed /opt/fastembed
 COPY --chown=app:app . .
+# /app itself stays root-owned, so create fetch_plots' default cache dir for
+# app. Prod mounts a named volume here; it takes this ownership when created.
+RUN mkdir -p /app/.plot_cache && chown app:app /app/.plot_cache
 # Keep the entrypoint executable even if the checkout lost its exec bit.
 RUN chmod 755 /app/entrypoint.prod.sh
 

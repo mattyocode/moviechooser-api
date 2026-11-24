@@ -23,7 +23,7 @@ Hosting: Hetzner + Docker Compose behind a Cloudflare Tunnel (`docker-compose.pr
 
 Each movie has a `MoviePlot` row holding long-form plot text and two 384-dimension embeddings (`BAAI/bge-small-en-v1.5` via fastembed, baked into the images at `/opt/fastembed`). Two idempotent management commands build them:
 
-- `fetch_plots` matches movies to English Wikipedia articles by IMDb ID (Wikidata property P345) and stores the article's Plot section. When there is no article or no plot section, it falls back to OMDb's full plot. Articles whose revision hasn't changed are skipped, and raw responses are cached in `app/.plot_cache/`. It needs `WIKIMEDIA_CONTACT` set to a contact address for the Wikimedia User-Agent, and `OMDB_API_KEY` for the fallback. Transient failures (HTTP 429 and 5xx, timeouts, Wikipedia `maxlag` and `ratelimited`) are retried with back-off. It ends with a summary line: `movies N | wikipedia W | omdb O | missing M | unchanged U`, where the source counts are each movie's source after the run (or what it would be, with `--dry-run`).
+- `fetch_plots` matches movies to English Wikipedia articles by IMDb ID (Wikidata property P345) and stores the article's Plot section. When there is no article or no plot section, it falls back to OMDb's full plot. Articles whose revision hasn't changed are skipped, and raw responses are cached in `app/.plot_cache/` (in prod, the `plot_cache` volume on `api`). It needs `WIKIMEDIA_CONTACT` set to a contact address for the Wikimedia User-Agent, and `OMDB_API_KEY` for the fallback. Transient failures (HTTP 429 and 5xx, timeouts, Wikipedia `maxlag` and `ratelimited`) are retried with back-off. It ends with a summary line: `movies N | wikipedia W | omdb O | missing M | unchanged U`, where the source counts are each movie's source after the run (or what it would be, with `--dry-run`).
 - `build_plot_embeddings` fills two vectors per row, and only embeds a vector when it is missing, the model has changed or its text has changed:
   - the plot vector, from `MoviePlot.text`;
   - the premise vector, from the movie's genres (sorted) plus OMDb's short plot (`Movie.plot`), e.g. `Action, Crime, Drama. A young getaway driver …`. Averaging a long plot blurs a specific premise, which is why the second vector exists. The title is deliberately left out, because title words match unrelated movies (*Baby Driver* → *Babyteeth*). Search is meant to combine the two vectors at query time.
@@ -37,9 +37,9 @@ Both take `--limit`, `--imdbid` (repeatable), `--dry-run` and `--force`. `fetch_
 docker compose -f docker-compose.dev.yml exec movies python manage.py fetch_plots
 docker compose -f docker-compose.dev.yml exec movies python manage.py build_plot_embeddings
 
-# prod (on the instance, inside tmux: a full fetch takes about an hour)
-docker compose -f docker-compose.prod.yml exec djangogunicorn python manage.py fetch_plots
-docker compose -f docker-compose.prod.yml exec djangogunicorn python manage.py build_plot_embeddings
+# prod (on the server, inside tmux: a full fetch takes about an hour)
+docker compose -f docker-compose.prod.yml exec api python manage.py fetch_plots
+docker compose -f docker-compose.prod.yml exec api python manage.py build_plot_embeddings
 ```
 
 ### Similar movies

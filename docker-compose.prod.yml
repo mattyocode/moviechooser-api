@@ -45,6 +45,9 @@ services:
     logging: *default-logging
     restart: unless-stopped
     env_file: .env.prod
+    volumes:
+      # fetch_plots' response cache, kept across deploys.
+      - plot_cache:/app/.plot_cache
     depends_on:
       db:
         condition: service_healthy
@@ -98,3 +101,4 @@ services:
 
 volumes:
   postgres_data:
+  plot_cache:
