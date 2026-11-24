@@ -42,6 +42,9 @@ echo "Container UID: $uid"
 
 docker exec "$name" sh -c 'touch /app/.plot_cache/.w && rm /app/.plot_cache/.w' \
   || fail "/app/.plot_cache isn't writable by the container user"
+if docker exec "$name" sh -c 'touch /app/config/.w' 2>/dev/null; then
+  fail "The container user can write the app source; it should be root-owned"
+fi
 
 # Same command as the api healthcheck in docker-compose.prod.yml.
 check='import urllib.request as u; u.urlopen(u.Request("http://127.0.0.1:8000/api/health/", headers={"Host": "moviechooser.co.uk"}), timeout=5)'
