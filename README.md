@@ -298,6 +298,6 @@ def test_get_queryset_filtered_by_runtime_range_incl_gt(client):
 
 ## Challenges and Improvements
 
-Setting up an effective deployment pipeline to a single server (chosen to provide predictable costing) was one of the stand out challenges. In particular, successfully setting up the Nginx reverse proxy and Let’s Encrypt SSL certbot (without exceeding request limitations while testing!) were steep learning curves but very worthwhile. The database has since moved into a pgvector-enabled Postgres 16 container on the same server, ready for vector search work.
+Setting up an effective deployment pipeline to a single server (chosen to provide predictable costing) was one of the stand out challenges. In particular, successfully setting up the Nginx reverse proxy and Let’s Encrypt SSL certbot (without exceeding request limitations while testing!) were steep learning curves but very worthwhile. That setup has since been replaced by a Cloudflare Tunnel in front of the frontend's nginx. The database has since moved into a pgvector-enabled Postgres 16 container on the same server, ready for vector search work.
 
 In terms of further improvements (beyond adding more movies to the database), I am keen to provide further endpoints for filtering and searching content, such as by actor, director, and availability on streaming services.
