@@ -29,9 +29,19 @@ run --rm --entrypoint python "$image" manage.py createcachetable
 echo "== start with the image's entrypoint"
 run -d --name "$name" "$image"
 
-uid=$(docker exec "$name" id -u)
+fail() {
+  echo "$1"
+  docker logs "$name" 2>&1 || true
+  exit 1
+}
+
+# If the container died at boot, exec fails: show its logs, not just that.
+uid=$(docker exec "$name" id -u) || fail "Container isn't running"
 echo "Container UID: $uid"
-[ "$uid" != "0" ] || { echo "Container runs as root"; exit 1; }
+[ "$uid" != "0" ] || fail "Container runs as root"
+
+docker exec "$name" sh -c 'touch /app/.plot_cache/.w && rm /app/.plot_cache/.w' \
+  || fail "/app/.plot_cache isn't writable by the container user"
 
 # Same command as the api healthcheck in docker-compose.prod.yml.
 check='import urllib.request as u; u.urlopen(u.Request("http://127.0.0.1:8000/api/health/", headers={"Host": "moviechooser.co.uk"}), timeout=5)'
@@ -39,9 +49,7 @@ i=0
 until docker exec "$name" python -c "$check" 2>/dev/null; do
   i=$((i + 1))
   if [ "$i" -ge 45 ] || [ "$(docker inspect -f '{{.State.Running}}' "$name")" != "true" ]; then
-    echo "Health check never passed"
-    docker logs "$name"
-    exit 1
+    fail "Health check never passed"
   fi
   sleep 2
 done
@@ -52,9 +60,7 @@ i=0
 until [ "$(docker logs "$name" 2>&1 | grep -c 'Embedding model loaded')" -ge 2 ]; do
   i=$((i + 1))
   if [ "$i" -ge 30 ] || docker logs "$name" 2>&1 | grep -q 'Embedding model failed to load'; then
-    echo "Embedding model didn't load in every worker"
-    docker logs "$name"
-    exit 1
+    fail "Embedding model didn't load in every worker"
   fi
   sleep 2
 done

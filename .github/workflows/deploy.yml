@@ -4,6 +4,12 @@ on:
     branches:
       - main
 
+# Pushes to the mutable :main tag. Queue runs instead of overlapping them, so
+# an older commit can never be pushed after a newer one.
+concurrency:
+  group: publish-main
+  cancel-in-progress: false
+
 env:
   IMAGE: ghcr.io/mattyocode/mattyocode/moviechooser-api
   TEST_IMAGE: moviechooser-api:test
