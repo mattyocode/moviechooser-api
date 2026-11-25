@@ -5,7 +5,8 @@ on:
       - main
 
 # Pushes to the mutable :main tag. Queue runs instead of overlapping them, so
-# an older commit can never be pushed after a newer one.
+# runs push in order. Re-running an old run isn't covered by this; the push
+# step checks that the commit is still main's tip before moving :main.
 concurrency:
   group: publish-main
   cancel-in-progress: false
@@ -146,9 +147,19 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # sha- tags are immutable, so always push them. Only move :main if this
+      # commit is still main's tip: a re-run of an older run must not roll the
+      # tag back.
       - name: Push runtime image
         env:
           TAGS: ${{ steps.docker_meta.outputs.tags }}
         run: |
-          for tag in $TAGS; do docker push "$tag"; done
-          docker image inspect --format '{{index .RepoDigests 0}}' "${{ env.IMAGE }}:main"
+          tip=$(git ls-remote origin refs/heads/main | cut -f1)
+          for tag in $TAGS; do
+            if [ "$tag" = "$IMAGE:main" ] && [ "$tip" != "$GITHUB_SHA" ]; then
+              echo "::warning::Not moving $IMAGE:main: $GITHUB_SHA is no longer main's tip ($tip)"
+              continue
+            fi
+            docker push "$tag"
+          done
+          docker image inspect --format '{{json .RepoDigests}}' "$RUNTIME_IMAGE"
