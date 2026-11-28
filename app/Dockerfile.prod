@@ -7,7 +7,7 @@
 #   runtime      the pushed image: venv, model and source, runs as `app`
 #   test         runtime plus the dev venv; CI runs its checks here
 
-FROM python:3.12-slim-bookworm AS base
+FROM python:3.12-slim-trixie AS base
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -26,7 +26,7 @@ FROM base AS builder
 
 # Poetry lives in its own venv so it never reaches the runtime image. With
 # virtualenvs.create off and VIRTUAL_ENV set, it installs into /opt/venv.
-ENV POETRY_VERSION=2.5.1 \
+ENV POETRY_VERSION=2.5.2 \
     POETRY_VIRTUALENVS_CREATE=false \
     POETRY_NO_INTERACTION=1
 RUN python -m venv /opt/venv \

@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   movies:
     build: ./app
@@ -17,7 +15,7 @@ services:
         condition: service_healthy
 
   nginx:
-    image: nginx:latest
+    image: nginx:1.30
     ports:
       - 80:80
     depends_on:
@@ -44,7 +42,7 @@ services:
       retries: 3
 
   redis:
-    image: redis:7-alpine
+    image: redis:8-alpine
     container_name: redis
 
   celery:

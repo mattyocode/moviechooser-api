@@ -29,7 +29,7 @@ services:
 
   # Broker only: queued messages are short-lived and beat re-queues on schedule.
   redis:
-    image: redis:7-alpine
+    image: redis:8-alpine
     logging: *default-logging
     command: redis-server --save "" --appendonly no
     restart: unless-stopped
