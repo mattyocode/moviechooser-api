@@ -1,8 +1,28 @@
-env
+# Build files
 .dockerignore
 Dockerfile
 Dockerfile.prod
+
+# Secrets: env files never go in an image (CI checks this)
 **/.env*
 !**/.env.example
 !**/.env.db.example
-.plot_cache
+
+# Local state, caches and data
+**/__pycache__/
+**/*.pyc
+**/*.sqlite3
+.plot_cache/
+log/
+config/staticfiles/
+fixtures/
+db_dump/
+# Data dumps (db_copy.json, movies_data.json, ...). No JSON in the repo is
+# needed in the image.
+**/*.json
+env/
+.venv/
+.pytest_cache/
+.coverage
+.vscode/
+.DS_Store

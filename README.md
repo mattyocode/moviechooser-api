@@ -17,15 +17,13 @@ A Dockerized Django REST Framework project that provides endpoints for movie dat
 
 ## Deployment
 
-The Dockerized app is deployed to an AWS Lightsail instance via Github Actions. The database runs on the same instance as a `pgvector/pgvector:pg16` container (`mc-prod-db` in `docker-compose.prod.yml`, `mc-staging-db` for staging), reachable only on the Compose network. Its credentials live in `app/.env.prod.db` (see `app/.env.db.example`).
-
-Lightsail's managed-database backups no longer apply, so back up with `pg_dump`. See [docs/db-cutover.md](docs/db-cutover.md) for the migration from the old Lightsail-hosted database, rollback and backups.
+Hosting: Hetzner + Docker Compose behind a Cloudflare Tunnel (`docker-compose.prod.yml`).
 
 ## Plot data and embeddings
 
 Each movie has a `MoviePlot` row holding long-form plot text and two 384-dimension embeddings (`BAAI/bge-small-en-v1.5` via fastembed, baked into the images at `/opt/fastembed`). Two idempotent management commands build them:
 
-- `fetch_plots` matches movies to English Wikipedia articles by IMDb ID (Wikidata property P345) and stores the article's Plot section. When there is no article or no plot section, it falls back to OMDb's full plot. Articles whose revision hasn't changed are skipped, and raw responses are cached in `app/.plot_cache/`. It needs `WIKIMEDIA_CONTACT` set to a contact address for the Wikimedia User-Agent, and `OMDB_API_KEY` for the fallback. Transient failures (HTTP 429 and 5xx, timeouts, Wikipedia `maxlag` and `ratelimited`) are retried with back-off. It ends with a summary line: `movies N | wikipedia W | omdb O | missing M | unchanged U`, where the source counts are each movie's source after the run (or what it would be, with `--dry-run`).
+- `fetch_plots` matches movies to English Wikipedia articles by IMDb ID (Wikidata property P345) and stores the article's Plot section. When there is no article or no plot section, it falls back to OMDb's full plot. Articles whose revision hasn't changed are skipped, and raw responses are cached in `app/.plot_cache/` (in prod, the `plot_cache` volume on `api`). It needs `WIKIMEDIA_CONTACT` set to a contact address for the Wikimedia User-Agent, and `OMDB_API_KEY` for the fallback. Transient failures (HTTP 429 and 5xx, timeouts, Wikipedia `maxlag` and `ratelimited`) are retried with back-off. It ends with a summary line: `movies N | wikipedia W | omdb O | missing M | unchanged U`, where the source counts are each movie's source after the run (or what it would be, with `--dry-run`).
 - `build_plot_embeddings` fills two vectors per row, and only embeds a vector when it is missing, the model has changed or its text has changed:
   - the plot vector, from `MoviePlot.text`;
   - the premise vector, from the movie's genres (sorted) plus OMDb's short plot (`Movie.plot`), e.g. `Action, Crime, Drama. A young getaway driver …`. Averaging a long plot blurs a specific premise, which is why the second vector exists. The title is deliberately left out, because title words match unrelated movies (*Baby Driver* → *Babyteeth*). Search is meant to combine the two vectors at query time.
@@ -39,9 +37,9 @@ Both take `--limit`, `--imdbid` (repeatable), `--dry-run` and `--force`. `fetch_
 docker compose -f docker-compose.dev.yml exec movies python manage.py fetch_plots
 docker compose -f docker-compose.dev.yml exec movies python manage.py build_plot_embeddings
 
-# prod (on the instance, inside tmux: a full fetch takes about an hour)
-docker compose -f docker-compose.prod.yml exec djangogunicorn python manage.py fetch_plots
-docker compose -f docker-compose.prod.yml exec djangogunicorn python manage.py build_plot_embeddings
+# prod (on the server, inside tmux: a full fetch takes about an hour)
+docker compose -f docker-compose.prod.yml exec api python manage.py fetch_plots
+docker compose -f docker-compose.prod.yml exec api python manage.py build_plot_embeddings
 ```
 
 ### Similar movies
@@ -113,7 +111,7 @@ Movie payloads carry `has_tmdb`, and the app shows its Watch button only when it
 
 ### Caching
 
-TMDB data goes in the `tmdb` cache, Django's database cache (the `django_cache` table, created by `createcachetable` in both entrypoints). It's shared by every worker and kept across restarts. The default cache, which DRF's throttles use on every request, stays in per-process memory.
+TMDB data goes in the `tmdb` cache, Django's database cache (the `django_cache` table, created by `createcachetable`, which the dev entrypoint runs after `migrate`; in prod, the deploy script will run both — it is added in a later PR, so run them by hand until then). It's shared by every worker and kept across restarts. The default cache, which DRF's throttles use on every request, stays in per-process memory.
 
 - Each movie's full TMDB response, covering every country, is kept for 24 hours, so one call serves all countries.
 - A failed lookup is remembered for 60 seconds, so an outage doesn't send a request to TMDB on every panel open.
@@ -121,13 +119,13 @@ TMDB data goes in the `tmdb` cache, Django's database cache (the `django_cache` 
 
 ## Background jobs
 
-Celery runs background and scheduled work. Every compose file (dev, staging, prod) runs three extra services next to the API:
+Celery runs background and scheduled work. Both compose files (dev and prod) run three extra services next to the API:
 
-- `redis`: the broker. In prod and staging nothing is persisted, because queued messages are short-lived and beat re-queues on schedule.
-- the worker (`celery` in dev, `celery-worker` in staging and prod): runs tasks. In staging and prod it runs one task at a time (`--concurrency=1`), because each worker child is a full Django process.
+- `redis`: the broker. In prod nothing is persisted, because queued messages are short-lived and beat re-queues on schedule.
+- the worker (`celery` in dev, `celery-worker` in prod): runs tasks. In prod it runs one task at a time (`--concurrency=1`), because each worker child is a full Django process.
 - `celery-beat`: queues scheduled jobs. **Run exactly one.** A second beat queues every job twice.
 
-In staging and prod, the worker and beat override the image's entrypoint, so they never run `migrate` or start gunicorn. Only the API container does either.
+In prod, the worker and beat override the image's entrypoint, so they never start gunicorn. No container runs `migrate` on start. The deploy script, added in a later PR, will run it before swapping containers; until then, run `migrate` and `createcachetable` by hand before `up`.
 
 Scheduled jobs are declared in one place: `CELERY_BEAT_SCHEDULE` in `config/settings/base.py`. Times are in UTC. `movies/tests/test_celery_schedule.py` fails if an entry names a task that isn't registered. The broker defaults to `redis://redis:6379/0`. Set `CELERY_BROKER_URL` / `CELERY_RESULT_BACKEND` to point elsewhere.
 
@@ -143,7 +141,7 @@ docker compose -f docker-compose.dev.yml exec celery celery -A config inspect re
 docker compose -f docker-compose.dev.yml exec celery celery -A config call movies.tasks.add_movies_to_db --args='[[]]'
 ```
 
-In staging and prod, use the matching compose file and `celery-worker` in place of `celery`.
+In prod, use `docker-compose.prod.yml` and `celery-worker` in place of `celery`.
 
 ## Requirements
 
@@ -300,6 +298,6 @@ def test_get_queryset_filtered_by_runtime_range_incl_gt(client):
 
 ## Challenges and Improvements
 
-Setting up an effective deployment pipeline to an AWS Lightsail instance (chosen to provide predictable costing) was one of the stand out challenges. In particular, successfully setting up the Nginx reverse proxy and Let’s Encrypt SSL certbot (without exceeding request limitations while testing!) were steep learning curves but very worthwhile. The database has since moved from a separate Lightsail database into a pgvector-enabled Postgres 16 container on the same instance, ready for vector search work.
+Setting up an effective deployment pipeline to a single server (chosen to provide predictable costing) was one of the stand out challenges. In particular, successfully setting up the Nginx reverse proxy and Let’s Encrypt SSL certbot (without exceeding request limitations while testing!) were steep learning curves but very worthwhile. That setup has since been replaced by a Cloudflare Tunnel in front of the frontend's nginx. The database has since moved into a pgvector-enabled Postgres 16 container on the same server, ready for vector search work.
 
 In terms of further improvements (beyond adding more movies to the database), I am keen to provide further endpoints for filtering and searching content, such as by actor, director, and availability on streaming services.

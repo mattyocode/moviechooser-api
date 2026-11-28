@@ -1,108 +1,117 @@
-version: "3.8"
+# Migrations are not run on start. The deploy script (added in a later PR)
+# will run `migrate` and `createcachetable` with the new image before swapping
+# containers; until then, run both by hand before the first `up`.
+name: moviechooser
+
+x-api-image: &api-image ghcr.io/mattyocode/mattyocode/moviechooser-api:${API_TAG:-main}
+
+# Docker's json-file driver doesn't rotate on its own: cap each container's
+# logs at 3 x 10 MB.
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
 
 services:
-  djangogunicorn:
-    build:
-      context: ./app
-      dockerfile: Dockerfile.inst.prod
-    volumes:
-      - ./app/:/app/
-      - static_volume:/app/web/staticfiles
-      - media_volume:/app/web/mediafiles
-    expose:
-      - "8000"
-    env_file:
-      - ./app/.env.prod
-    depends_on:
-      mc-prod-db:
-        condition: service_healthy
-
-  mc-prod-db:
+  db:
     image: pgvector/pgvector:pg16
-    restart: always
+    logging: *default-logging
+    restart: unless-stopped
+    env_file: .env.prod.db
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    env_file:
-      - ./app/.env.prod.db
     healthcheck:
-      test: pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 10s
       timeout: 3s
-      retries: 3
+      retries: 5
 
-  # Broker only: queued messages are short-lived and beat re-queues on
-  # schedule, so nothing is persisted.
+  # Broker only: queued messages are short-lived and beat re-queues on schedule.
   redis:
     image: redis:7-alpine
+    logging: *default-logging
     command: redis-server --save "" --appendonly no
-    restart: always
+    restart: unless-stopped
 
-  # The Celery services override the entrypoint so they never run migrate or
-  # start gunicorn (entrypoint.prod.sh does both). One task at a time keeps
-  # memory bounded: each prefork child is a full Django process.
-  celery-worker:
-    build:
-      context: ./app
-      dockerfile: Dockerfile.inst.prod
-    entrypoint: ["celery", "-A", "config", "worker", "-l", "info", "--concurrency=1"]
-    restart: always
-    env_file:
-      - ./app/.env.prod
+  api:
+    image: *api-image
+    logging: *default-logging
+    restart: unless-stopped
+    env_file: .env.prod
+    volumes:
+      # fetch_plots' response cache, kept across deploys.
+      - plot_cache:/app/.plot_cache
     depends_on:
-      mc-prod-db:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request as u; u.urlopen(u.Request('http://127.0.0.1:8000/api/health/', headers={'Host': 'moviechooser.co.uk'}), timeout=5)",
+        ]
+      interval: 15s
+      timeout: 6s
+      retries: 3
+      start_period: 60s
+
+  # Overrides the entrypoint, so it never starts gunicorn. One task at a time
+  # keeps memory bounded: each prefork child is a full Django process.
+  celery-worker:
+    image: *api-image
+    logging: *default-logging
+    entrypoint:
+      ["celery", "-A", "config", "worker", "-l", "info", "--concurrency=1"]
+    restart: unless-stopped
+    env_file: .env.prod
+    depends_on:
+      db:
         condition: service_healthy
       redis:
         condition: service_started
 
   # Exactly one beat process: a second would queue every scheduled job twice.
   celery-beat:
-    build:
-      context: ./app
-      dockerfile: Dockerfile.inst.prod
-    entrypoint: ["celery", "-A", "config", "beat", "-l", "info", "--schedule", "/tmp/celerybeat-schedule"]
-    restart: always
-    env_file:
-      - ./app/.env.prod
+    image: *api-image
+    logging: *default-logging
+    entrypoint:
+      [
+        "celery",
+        "-A",
+        "config",
+        "beat",
+        "-l",
+        "info",
+        "--schedule",
+        "/tmp/celerybeat-schedule",
+      ]
+    restart: unless-stopped
+    env_file: .env.prod
     depends_on:
       redis:
         condition: service_started
 
-  nginx-proxy:
-    container_name: nginx-proxy
-    build: ./nginx
-    restart: always
-    ports:
-      - "443:443"
-      - "80:80"
-      - "587:587"
-    volumes:
-      - static_volume:/app/web/staticfiles
-      - media_volume:/app/web/mediafiles
-      - certs:/etc/nginx/certs
-      - html:/usr/share/nginx/html
-      - vhost:/etc/nginx/vhost.d
-      - /var/run/docker.sock:/tmp/docker.sock:ro
+  frontend:
+    image: ghcr.io/mattyocode/react-moviechooser:${FRONTEND_TAG:-main}
+    logging: *default-logging
+    restart: unless-stopped
+    # Don't route traffic until gunicorn is up and the DB check passes.
     depends_on:
-      - djangogunicorn
+      api:
+        condition: service_healthy
 
-  nginx-proxy-letsencrypt:
-    image: nginxproxy/acme-companion
-    env_file:
-      - ./nginx/.env.prod.proxy-companion
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - certs:/etc/nginx/certs
-      - html:/usr/share/nginx/html
-      - vhost:/etc/nginx/vhost.d
-      - acme:/etc/acme.sh
+  cloudflared:
+    image: cloudflare/cloudflared:2026.11.1
+    logging: *default-logging
+    command: ["tunnel", "--no-autoupdate", "run"]
+    restart: unless-stopped
+    env_file: .env.tunnel
     depends_on:
-      - nginx-proxy
+      - frontend
 
 volumes:
   postgres_data:
-  static_volume:
-  media_volume:
-  certs:
-  html:
-  vhost:
-  acme:
+  plot_cache:
