@@ -64,7 +64,7 @@ class Movie(models.Model):
     class Meta:
         constraints = [
             models.CheckConstraint(
-                check=~models.Q(poster_path=""), name="movie_poster_path_not_empty"
+                condition=~models.Q(poster_path=""), name="movie_poster_path_not_empty"
             )
         ]
 

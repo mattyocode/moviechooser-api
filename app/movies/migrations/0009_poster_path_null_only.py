@@ -25,7 +25,7 @@ class Migration(migrations.Migration):
         migrations.AddConstraint(
             model_name="movie",
             constraint=models.CheckConstraint(
-                check=models.Q(("poster_path", ""), _negated=True),
+                condition=models.Q(("poster_path", ""), _negated=True),
                 name="movie_poster_path_not_empty",
             ),
         ),
