@@ -95,7 +95,7 @@ WSGI_APPLICATION = "config.wsgi.application"
 # "tmdb" is Postgres-backed, shared by every worker and kept across restarts.
 # It holds TMDB watch-provider responses (movies/watch.py). The table comes
 # from `manage.py createcachetable`, which the dev entrypoint runs after
-# migrate. In prod, the deploy script (a later PR) will run both.
+# migrate. In prod, deploy/deploy.sh runs both.
 # MAX_ENTRIES covers one row per catalogue movie with room to spare; the
 # default (300) would cull most of them.
 CACHES = {

@@ -1,9 +1,11 @@
-# Migrations are not run on start. The deploy script (added in a later PR)
-# will run `migrate` and `createcachetable` with the new image before swapping
-# containers; until then, run both by hand before the first `up`.
+# Migrations are not run on start: deploy/deploy.sh runs `migrate` and
+# `createcachetable` with the new image before swapping containers.
+#
+# deploy.sh pins each image by digest in .env (API_IMAGE, FRONTEND_IMAGE); the
+# :main defaults only apply before the first deploy.
 name: moviechooser
 
-x-api-image: &api-image ghcr.io/mattyocode/mattyocode/moviechooser-api:${API_TAG:-main}
+x-api-image: &api-image ${API_IMAGE:-ghcr.io/mattyocode/mattyocode/moviechooser-api:main}
 
 # Docker's json-file driver doesn't rotate on its own: cap each container's
 # logs at 3 x 10 MB.
@@ -95,7 +97,7 @@ services:
         condition: service_started
 
   frontend:
-    image: ghcr.io/mattyocode/react-moviechooser:${FRONTEND_TAG:-main}
+    image: ${FRONTEND_IMAGE:-ghcr.io/mattyocode/react-moviechooser:main}
     logging: *default-logging
     restart: unless-stopped
     # Don't route traffic until gunicorn is up and the DB check passes.
