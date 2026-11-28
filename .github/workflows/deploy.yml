@@ -49,7 +49,7 @@ jobs:
 
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Validate prod compose file
         run: |
@@ -58,11 +58,11 @@ jobs:
 
       - name: Set up Docker Buildx
         id: buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       # The test target is the runtime image plus the dev dependencies.
       - name: Build test image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         with:
           context: app
           file: app/Dockerfile.prod
@@ -96,7 +96,7 @@ jobs:
 
       - name: Docker meta
         id: docker_meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ${{ env.IMAGE }}
           tags: |
@@ -104,7 +104,7 @@ jobs:
             type=sha,prefix=sha-,format=short
 
       - name: Build runtime image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         with:
           context: app
           file: app/Dockerfile.prod
@@ -141,7 +141,7 @@ jobs:
       # Push only after every check above passed, and push the image that was
       # checked (the runtime target), never the test target.
       - name: Login to GHCR
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
