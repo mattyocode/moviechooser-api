@@ -124,3 +124,8 @@ jobs:
       # entrypoint, non-root, health check and embedding model load.
       - name: Smoke test runtime image
         run: sh .github/scripts/smoke-runtime.sh ${{ env.RUNTIME_IMAGE }}
+
+      # deploy.sh against a throwaway stack: deploy, failed migration, rollback
+      # of an unhealthy api, lock, frontend deploy.
+      - name: Test deploy script
+        run: sh deploy/test-deploy.sh ${{ env.RUNTIME_IMAGE }}

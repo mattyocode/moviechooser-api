@@ -4,9 +4,10 @@ on:
     branches:
       - main
 
-# Pushes to the mutable :main tag. Queue runs instead of overlapping them, so
-# runs push in order. Re-running an old run isn't covered by this; the push
-# step checks that the commit is still main's tip before moving :main.
+# Pushes to the mutable :main tag and deploys. Queue runs instead of
+# overlapping them, so runs push and deploy in order. Re-running an old run
+# isn't covered by this; the push step checks that the commit is still main's
+# tip before moving :main, and only then is it deployed.
 concurrency:
   group: publish-main
   cancel-in-progress: false
@@ -22,6 +23,9 @@ jobs:
     permissions:
       contents: read
       packages: write
+    outputs:
+      image-ref: ${{ steps.push.outputs.ref }}
+      deploy: ${{ steps.push.outputs.deploy }}
     env:
       SECRET_KEY: ${{ secrets.SECRET_KEY }}
       DJANGO_ALLOWED_HOSTS: localhost 127.0.0.1
@@ -138,6 +142,11 @@ jobs:
       - name: Smoke test runtime image
         run: sh .github/scripts/smoke-runtime.sh ${{ env.RUNTIME_IMAGE }}
 
+      # deploy.sh against a throwaway stack: deploy, failed migration, rollback
+      # of an unhealthy api, lock, frontend deploy.
+      - name: Test deploy script
+        run: sh deploy/test-deploy.sh ${{ env.RUNTIME_IMAGE }}
+
       # Push only after every check above passed, and push the image that was
       # checked (the runtime target), never the test target.
       - name: Login to GHCR
@@ -151,15 +160,73 @@ jobs:
       # commit is still main's tip: a re-run of an older run must not roll the
       # tag back.
       - name: Push runtime image
+        id: push
         env:
           TAGS: ${{ steps.docker_meta.outputs.tags }}
         run: |
           tip=$(git ls-remote origin refs/heads/main | cut -f1)
+          deploy=true
           for tag in $TAGS; do
             if [ "$tag" = "$IMAGE:main" ] && [ "$tip" != "$GITHUB_SHA" ]; then
-              echo "::warning::Not moving $IMAGE:main: $GITHUB_SHA is no longer main's tip ($tip)"
+              echo "::warning::Not moving $IMAGE:main or deploying: $GITHUB_SHA is no longer main's tip ($tip)"
+              deploy=false
               continue
             fi
             docker push "$tag"
           done
-          docker image inspect --format '{{json .RepoDigests}}' "$RUNTIME_IMAGE"
+          # RepoDigests also lists the local name; take the GHCR one.
+          ref=$(docker image inspect --format '{{range .RepoDigests}}{{println .}}{{end}}' "$RUNTIME_IMAGE" | grep "^$IMAGE@sha256:")
+          echo "Pushed $ref"
+          echo "ref=$ref" >> "$GITHUB_OUTPUT"
+          echo "deploy=$deploy" >> "$GITHUB_OUTPUT"
+
+  # Joins the tailnet as tag:ci and deploys over Tailscale SSH (docs/deploy.md).
+  deploy:
+    needs: build-test
+    if: needs.build-test.outputs.deploy == 'true'
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://moviechooser.co.uk
+    permissions:
+      contents: read
+    env:
+      IMAGE_REF: ${{ needs.build-test.outputs.image-ref }}
+      DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+      DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Join the tailnet
+        uses: tailscale/github-action@v4
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:ci
+          ping: ${{ secrets.DEPLOY_HOST }}
+
+      # Tailscale SSH: the tailnet already authenticates the server (WireGuard
+      # keys), and the runner is new every time, so don't pin a host key.
+      - name: Configure SSH
+        run: |
+          mkdir -p ~/.ssh
+          cat >> ~/.ssh/config <<EOF
+          Host prod
+            HostName $DEPLOY_HOST
+            User $DEPLOY_USER
+            StrictHostKeyChecking no
+            UserKnownHostsFile /dev/null
+            LogLevel ERROR
+          EOF
+
+      # The compose file and deploy script live here, so ship them with every
+      # api deploy. The frontend repo's deploy uses whatever is on the server.
+      - name: Copy compose file and deploy script
+        run: rsync --chmod=F644 docker-compose.prod.yml deploy/deploy.sh prod:/srv/moviechooser/
+
+      - name: Deploy
+        run: |
+          # shellcheck disable=SC2029 # $IMAGE_REF is meant to expand on the runner
+          ssh prod sh /srv/moviechooser/deploy.sh api "$IMAGE_REF"
