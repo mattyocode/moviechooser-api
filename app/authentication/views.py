@@ -54,8 +54,10 @@ class RequestPasswordResetEmail(GenericAPIView):
             abs_url = scheme + current_site + relative_link
             redirect_url = request.data.get("redirect_url", "")
 
-            email_body = f"Hi movie fan,\n\nUse the following link to reset your password:\
+            email_body = (
+                f"Hi movie fan,\n\nUse the following link to reset your password:\
                     \n\n{abs_url}?redirect_url={redirect_url}"
+            )
 
             try:
                 send_email(

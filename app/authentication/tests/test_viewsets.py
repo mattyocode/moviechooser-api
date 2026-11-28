@@ -207,11 +207,9 @@ def test_refresh_token_fails_with_bad_token(client):
     )
     resp = client.post(
         "/auth/refresh/",
-        {
-            "refresh": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.\
+        {"refresh": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.\
                 eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.\
-                    SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
-        },
+                    SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"},
     )
     assert resp.status_code == 401
     assert "token_not_valid" in resp.data["code"]
