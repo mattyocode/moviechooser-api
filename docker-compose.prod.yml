@@ -1,9 +1,3 @@
-# Production stack on the Hetzner server, run from /srv/moviechooser next to
-# its env files (.env, .env.prod, .env.prod.db, .env.tunnel).
-#
-# Traffic: Cloudflare Tunnel -> cloudflared -> frontend (nginx :8080) -> api
-# (gunicorn :8000). No container publishes a port.
-#
 # Migrations are not run on start. The deploy script (added in a later PR)
 # will run `migrate` and `createcachetable` with the new image before swapping
 # containers; until then, run both by hand before the first `up`.
@@ -52,7 +46,13 @@ services:
       db:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen(u.Request('http://127.0.0.1:8000/api/health/', headers={'Host': 'moviechooser.co.uk'}), timeout=5)"]
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request as u; u.urlopen(u.Request('http://127.0.0.1:8000/api/health/', headers={'Host': 'moviechooser.co.uk'}), timeout=5)",
+        ]
       interval: 15s
       timeout: 6s
       retries: 3
@@ -63,7 +63,8 @@ services:
   celery-worker:
     image: *api-image
     logging: *default-logging
-    entrypoint: ["celery", "-A", "config", "worker", "-l", "info", "--concurrency=1"]
+    entrypoint:
+      ["celery", "-A", "config", "worker", "-l", "info", "--concurrency=1"]
     restart: unless-stopped
     env_file: .env.prod
     depends_on:
@@ -76,7 +77,17 @@ services:
   celery-beat:
     image: *api-image
     logging: *default-logging
-    entrypoint: ["celery", "-A", "config", "beat", "-l", "info", "--schedule", "/tmp/celerybeat-schedule"]
+    entrypoint:
+      [
+        "celery",
+        "-A",
+        "config",
+        "beat",
+        "-l",
+        "info",
+        "--schedule",
+        "/tmp/celerybeat-schedule",
+      ]
     restart: unless-stopped
     env_file: .env.prod
     depends_on:
