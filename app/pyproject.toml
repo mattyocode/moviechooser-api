@@ -1,37 +1,40 @@
-[tool.poetry]
+[project]
 name = "app"
 version = "0.1.0"
 description = ""
-authors = ["mattyocode"]
+authors = [{ name = "mattyocode" }]
+requires-python = ">=3.11,<4.0"
+dynamic = ["dependencies"]
+
+[tool.poetry]
 package-mode = false
 
 [tool.poetry.dependencies]
-python = "^3.11"
-Django = "5.0.11"
-djangorestframework = "3.15.1"
-psycopg2-binary = "2.9.9"
-gunicorn = "22.0.0"
-whitenoise = "5.2.0"
-django-cors-headers = "^3.10.0"
-djangorestframework-simplejwt = "^5.0.0"
-requests = "^2.32.2"
-django-ses = "3.5.0"
-redis = "^5.0.4"
-celery = "^5.4.0"
-django-filter = "^24.2"
+Django = "5.2.19"
+djangorestframework = "3.18.3"
+psycopg2-binary = "2.9.13"
+gunicorn = "27.0.1"
+whitenoise = "6.12.0"
+django-cors-headers = "^4.9.0"
+djangorestframework-simplejwt = "^5.5.1"
+requests = "^2.33.0"
+django-ses = "4.9.1"
+redis = "^8.2.0"
+celery = "^5.7.0"
+django-filter = "^26.2"
 pgvector = "^0.5.1"
 fastembed = "^0.9.1"
 
-[tool.poetry.dev-dependencies]
-pytest = "7.4.3"
-pytest-django = "4.4.0"
-pytest-factoryboy = "^2.1.0"
-pytest-cov = "^2.12.1"
-flake8 = "^6.1.0"
-black = "24.3.0"
-isort = "5.9.1"
-pytest-mock = "^3.6.1"
-pytest-env = "^1.1.3"
+[tool.poetry.group.dev.dependencies]
+pytest = "9.2.0"
+pytest-django = "4.14.0"
+pytest-factoryboy = "^2.8.1"
+pytest-cov = "^7.1.0"
+flake8 = "^7.5.0"
+black = "26.10.1"
+isort = "9.0.2"
+pytest-mock = "^3.17.0"
+pytest-env = "^1.8.8"
 
 [build-system]
 requires = ["poetry-core>=1.8.0"]

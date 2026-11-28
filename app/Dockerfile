@@ -1,4 +1,4 @@
-FROM python:3.12-slim-bookworm
+FROM python:3.12-slim-trixie
 
 WORKDIR /app
 
@@ -8,7 +8,7 @@ ENV PYTHONUNBUFFERED 1
 ENV PIP_NO_CACHE_DIR off
 ENV PIP_DISABLE_PIP_VERSION_CHECK on
 ENV PIP_DEFAULT_TIMEOUT=100
-ENV POETRY_VERSION 2.5.1
+ENV POETRY_VERSION 2.5.2
 ARG SECRET_KEY=runtimetempsecretkey
 
 # install system deps
